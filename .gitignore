@@ -1,0 +1,31 @@
+# --- Виртуальное окружение ---
+.venv/
+venv/
+env/
+
+# --- Кеши Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+
+# --- Jupyter ноутбуки ---
+.ipynb_checkpoints/
+
+# --- Настройки IDE ---
+.vscode/
+.idea/
+
+# --- Разное системное ---
+.DS_Store
+
+# --- Логи ---
+logs/
+*.log
+
+# --- Секреты (если появятся) ---
+.env
+.env.*
