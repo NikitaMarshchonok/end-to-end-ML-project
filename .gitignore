@@ -30,3 +30,5 @@ logs/
 .env
 .env.*
 *.pkl
+notebooks/models/
+*.pkl
