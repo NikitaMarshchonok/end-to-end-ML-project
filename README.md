@@ -78,6 +78,11 @@ Run the app:
 ```bash
 python src/app.py
 ```
+Open:
+```
+http://127.0.0.1:8050
+```
+
 
 ## 🗂 Project Structure
 
@@ -107,5 +112,48 @@ END-TO-END ML PROJECT/
 │   └── train_model.py
 ├── requirements.txt
 └── README.md
+```
+
+## 🖼 Screenshots
+
+**UI overview + model selector**
+![Model selection and Tel Aviv required inputs](pics/1.png)
+*Figure 1: Model selection page with Tel Aviv v2/v1 and Taiwan options.*
+
+---
+
+**Tel Aviv v1 — baseline flow**
+![Tel Aviv v1 baseline inputs](pics/2.png)
+*Figure 2: Tel Aviv v1 baseline model with minimal required inputs.*
+
+---
+
+**Taiwan — tutorial model**
+![Taiwan model inputs](pics/3.png)
+*Figure 3: Taiwan tutorial model input form (baseline dataset).*
+
+---
+
+**Tel Aviv v2 — prediction result**
+![Tel Aviv v2 prediction result](pics/4.png)
+*Figure 4: Tel Aviv v2 predicted price in ₪ after reversing log transformation.*
+
+---
+
+**Tel Aviv v2 — optional fields**
+![Tel Aviv v2 optional fields](pics/5.png)
+*Figure 5: Optional v2 inputs that can improve prediction accuracy.*
+
+
+## ⚙️ Installation
+```
+git clone <your-repo-url>
+cd <your-repo-folder>
+
+python -m venv venv
+source venv/bin/activate  # macOS/Linux
+# venv\Scripts\activate   # Windows
+
+pip install -r requirements.txt
 ```
 
