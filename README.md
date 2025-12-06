@@ -157,3 +157,41 @@ source venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 ```
 
+
+🛠 Tech Stack
+```
+Python
+
+Pandas / NumPy
+
+Scikit-learn
+
+Joblib
+
+Dash
+```
+
+🧭 Roadmap
+```
+Short-term (portfolio polish):
+
+ Export metrics snapshot to JSON inside models/
+
+ Add feature importance visualization for Tel Aviv v2
+
+ Add a lightweight “Compare v1 vs v2” UX mode
+
+Mid-term (real-world upgrade):
+
+ Try CatBoost / LightGBM / XGBoost
+
+ Cross-validation + error analysis
+
+ Add richer location/geospatial features if available
+
+MLOps-lite:
+
+ Model metadata: training date, dataset hash, metrics
+
+ Simple /predict API wrapper
+```
