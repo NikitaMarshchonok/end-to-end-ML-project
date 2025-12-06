@@ -195,3 +195,9 @@ MLOps-lite:
 
  Simple /predict API wrapper
 ```
+
+👤 Author
+
+Nikita Marshchonok
+
+ML / Data Science portfolio project.
