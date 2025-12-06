@@ -32,3 +32,6 @@ logs/
 *.pkl
 notebooks/models/
 *.pkl
+data/
+models/
+*.pkl
