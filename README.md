@@ -53,7 +53,7 @@ The app converts predictions back using:
 
 ---
 
-## ✅ Results
+##  Results
 
 Below are test-split results from the Tel Aviv experiments (trained on `log(price)`):
 
@@ -71,7 +71,7 @@ The **Tel Aviv v2 pipeline** is the strongest version of the project thanks to r
 
 ---
 
-## 🎬 Demo (Dash UI)
+##  Demo (Dash UI)
 
 Run the app:
 
