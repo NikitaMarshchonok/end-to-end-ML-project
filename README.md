@@ -171,7 +171,7 @@ Joblib
 Dash
 ```
 
-🧭 Roadmap
+ Roadmap
 ```
 Short-term (portfolio polish):
 
@@ -196,7 +196,7 @@ MLOps-lite:
  Simple /predict API wrapper
 ```
 
-👤 Author
+ Author
 
 Nikita Marshchonok
 
