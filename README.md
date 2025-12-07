@@ -1,4 +1,4 @@
-# 🏠 Real Estate Price Prediction — Tel Aviv v1/v2 + Taiwan baseline
+#  Real Estate Price Prediction — Tel Aviv v1/v2 + Taiwan baseline
 
 End-to-end ML project with a clean Dash interface for **real estate price prediction**.  
 The project demonstrates a complete workflow from EDA and feature engineering to model versioning and an interactive UI.
@@ -7,7 +7,7 @@ The project demonstrates a complete workflow from EDA and feature engineering to
 
 ---
 
-## 📌 Problem
+##  Problem
 
 Real estate pricing depends on many interacting factors: area, floor, building age, building scale, amenities, and market/time effects.  
 The goal of this project is to build a practical ML solution that:
@@ -19,7 +19,7 @@ The goal of this project is to build a practical ML solution that:
 
 ---
 
-## 🧩 Approach
+##  Approach
 
 ### 1) Data & EDA
 - Performed exploratory analysis for both:
