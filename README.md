@@ -84,7 +84,7 @@ http://127.0.0.1:8050
 ```
 
 
-## 🗂 Project Structure
+##  Project Structure
 
 ```bash
 END-TO-END ML PROJECT/
