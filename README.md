@@ -145,7 +145,7 @@ END-TO-END ML PROJECT/
 *Figure 5: Optional v2 inputs that can improve prediction accuracy.*
 
 
-## ⚙️ Installation
+##  Installation
 ```
 git clone <your-repo-url>
 cd <your-repo-folder>
@@ -158,7 +158,7 @@ pip install -r requirements.txt
 ```
 
 
-🛠 Tech Stack
+ Tech Stack
 ```
 Python
 
