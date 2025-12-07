@@ -158,7 +158,7 @@ pip install -r requirements.txt
 ```
 
 
- Tech Stack
+## Tech Stack
 ```
 Python
 
@@ -171,7 +171,7 @@ Joblib
 Dash
 ```
 
- Roadmap
+## Roadmap
 ```
 Short-term (portfolio polish):
 
