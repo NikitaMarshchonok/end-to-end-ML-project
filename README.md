@@ -114,7 +114,7 @@ END-TO-END ML PROJECT/
 └── README.md
 ```
 
-## 🖼 Screenshots
+##  Screenshots
 
 **UI overview + model selector**
 ![Model selection and Tel Aviv required inputs](pics/1.png)
