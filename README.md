@@ -201,3 +201,8 @@ MLOps-lite:
 Nikita Marshchonok
 
 ML / Data Science portfolio project.
+
+telegram: @nikitamarshchonok
+
+
+
