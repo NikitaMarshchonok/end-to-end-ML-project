@@ -204,5 +204,6 @@ ML / Data Science portfolio project.
 
 telegram: @nikitamarshchonok
 
+LinkedIn: https://linkedin.com/in/nikita-marshchonok
 
 
