@@ -196,7 +196,18 @@ MLOps-lite:
  Simple /predict API wrapper
 ```
 
- Author
+
+
+### Model Insights — Feature Importance (Tel Aviv v2)
+
+The chart below shows which features have the strongest impact on the Tel Aviv price prediction model (RandomForest v2).
+
+![Feature importance for Tel Aviv RF v2](pics/tel_aviv_v2_feature_importance.png)  
+*Figure X: RandomForest v2 feature importance — key drivers of Tel Aviv apartment prices.*
+
+
+
+Author
 
 Nikita Marshchonok
 
