@@ -36,7 +36,6 @@ if not os.path.exists(MODEL_TAIWAN_PATH):
 
 model_taiwan = joblib.load(MODEL_TAIWAN_PATH)
 
-
 # Tel Aviv v1 (optional but desirable)
 model_tel_aviv_v1 = None
 if os.path.exists(MODEL_TEL_AVIV_V1_PATH):
@@ -52,6 +51,36 @@ if os.path.exists(MODEL_TEL_AVIV_V2_PATH):
     if os.path.exists(TEL_AVIV_V2_FEATS_PATH):
         with open(TEL_AVIV_V2_FEATS_PATH, "r") as f:
             tel_aviv_v2_feature_cols = json.load(f)
+
+
+# =========================================================
+# Model metrics for "Model Card"
+# (значения взяты из ноутбука с экспериментами)
+# =========================================================
+
+MODEL_METRICS = {
+    "tel_aviv_v2": {
+        "display_name": "Tel Aviv model v2 (RandomForest, log(price))",
+        "mae": 669_657,
+        "rmse": 1_418_990,
+        "r2": 0.610,
+        "note": "Trained on 20 years of Tel Aviv transactions with engineered features and log(price).",
+    },
+    "tel_aviv_v1": {
+        "display_name": "Tel Aviv model v1 (Linear regression, no feature engineering)",
+        "mae": 858_171,
+        "rmse": 1_778_791,
+        "r2": 0.387,
+        "note": "Baseline linear model with a smaller feature set.",
+    },
+    "taiwan": {
+        "display_name": "Tutorial model (Taiwan housing dataset)",
+        "mae": None,
+        "rmse": None,
+        "r2": None,
+        "note": "Educational model trained on the classic Taiwan real estate dataset.",
+    },
+}
 
 
 # Fallback list (если json не найден)
@@ -265,6 +294,17 @@ app.layout = html.Div(
             ],
         ),
 
+        # --- Model Card (метрики модели) ---
+        html.Div(
+            id="model-card",
+            style={
+                **CARD_STYLE,
+                "borderLeft": "4px solid #0d6efd",
+                "background": "#f8f9ff",
+                "marginTop": "-4px",
+            },
+        ),
+
         # =====================================================
         # Tel Aviv базовые поля
         # =====================================================
@@ -471,7 +511,11 @@ def toggle_sections(model_choice):
     show_taiwan = model_choice == "taiwan"
 
     telaviv_style = {**CARD_STYLE, "display": "block"} if show_telaviv else {**CARD_STYLE, "display": "none"}
-    telaviv_v2_style = {**CARD_STYLE, "background": "#f7f9ff", "display": "block"} if show_telaviv_v2_opt else {**CARD_STYLE, "display": "none"}
+    telaviv_v2_style = {
+        **CARD_STYLE,
+        "background": "#f7f9ff",
+        "display": "block",
+    } if show_telaviv_v2_opt else {**CARD_STYLE, "display": "none"}
     taiwan_style = {**CARD_STYLE, "display": "block"} if show_taiwan else {**CARD_STYLE, "display": "none"}
 
     return telaviv_style, telaviv_v2_style, taiwan_style
@@ -493,6 +537,107 @@ def update_button_text(model_choice):
     if model_choice == "taiwan":
         return "Predict with Taiwan model"
     return "Predict price"
+
+
+# =========================================================
+# Model card callback
+# =========================================================
+
+@app.callback(
+    Output("model-card", "children"),
+    Input("model-choice", "value"),
+)
+def update_model_card(model_choice: str):
+    info = MODEL_METRICS.get(model_choice)
+
+    if not info:
+        return html.Div(
+            "No metrics available for this model yet.",
+            style={"fontSize": "13px"},
+        )
+
+    mae = info.get("mae")
+    rmse = info.get("rmse")
+    r2 = info.get("r2")
+
+    metrics_block = []
+    if mae is not None:
+        metrics_block.append(html.Li(f"MAE  ≈ {mae:,.0f} ₪"))
+    if rmse is not None:
+        metrics_block.append(html.Li(f"RMSE ≈ {rmse:,.0f} ₪"))
+    if r2 is not None:
+        metrics_block.append(html.Li(f"R²   ≈ {r2:.3f}"))
+
+    return html.Div(
+        children=[
+            html.Div("Model card", style={"fontWeight": "600", "fontSize": "13px", "marginBottom": "4px"}),
+            html.Div(info["display_name"], style={"fontSize": "13px", "marginBottom": "6px"}),
+            html.Ul(metrics_block, style={"paddingLeft": "18px", "margin": "0 0 4px 0", "fontSize": "13px"}),
+            html.Div(
+                info.get("note", ""),
+                style={**MUTED_TEXT, "marginTop": "4px"},
+            ),
+        ]
+    )
+
+
+# =========================================================
+# Validation helpers
+# =========================================================
+
+def validate_tel_aviv_inputs(netarea, rooms, floor, year):
+    """
+    Простая валидация основных полей для Tel Aviv.
+    Возвращает список строк-ошибок (если он пустой — всё ок).
+    """
+    errors = []
+    current_year = datetime.now().year
+
+    # Net area
+    if netarea is None:
+        errors.append("Please enter net area (m²).")
+    else:
+        try:
+            na = float(netarea)
+            if na <= 10 or na > 400:
+                errors.append("Net area should be between 10 and 400 m².")
+        except ValueError:
+            errors.append("Net area must be a number.")
+
+    # Rooms
+    if rooms is None:
+        errors.append("Please enter number of rooms.")
+    else:
+        try:
+            r = float(rooms)
+            if r <= 0 or r > 10:
+                errors.append("Number of rooms should be between 1 and 10.")
+        except ValueError:
+            errors.append("Number of rooms must be a number.")
+
+    # Floor
+    if floor is None:
+        errors.append("Please enter floor.")
+    else:
+        try:
+            f = float(floor)
+            if f < 0 or f > 60:
+                errors.append("Floor should be between 0 and 60.")
+        except ValueError:
+            errors.append("Floor must be a number.")
+
+    # Year
+    if year is None:
+        errors.append("Please enter construction year.")
+    else:
+        try:
+            y = int(year)
+            if y < 1960 or y > current_year:
+                errors.append(f"Construction year should be between 1960 and {current_year}.")
+        except ValueError:
+            errors.append("Construction year must be an integer.")
+
+    return errors
 
 
 # =========================================================
@@ -551,8 +696,14 @@ def predict_price(
     # Tel Aviv v2
     # -------------------------
     if model_choice == "tel_aviv_v2":
+        # Быстрая проверка на заполненность
         if netarea is None or rooms is None or floor is None or year is None:
             return "Please fill in all required Tel Aviv fields (net area, rooms, floor, year)."
+
+        # Дополнительная валидация диапазонов
+        errors = validate_tel_aviv_inputs(netarea, rooms, floor, year)
+        if errors:
+            return "Input validation error: " + " ".join(errors)
 
         if model_tel_aviv_v2 is None:
             return "Tel Aviv v2 model file not found."
@@ -583,6 +734,10 @@ def predict_price(
     if model_choice == "tel_aviv_v1":
         if netarea is None or rooms is None or floor is None or year is None:
             return "Please fill in all required Tel Aviv fields (net area, rooms, floor, year)."
+
+        errors = validate_tel_aviv_inputs(netarea, rooms, floor, year)
+        if errors:
+            return "Input validation error: " + " ".join(errors)
 
         if model_tel_aviv_v1 is None:
             return "Tel Aviv v1 model file not found."
