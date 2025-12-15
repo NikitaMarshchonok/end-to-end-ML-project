@@ -221,12 +221,11 @@ MLOps-lite:
 
 
 
-### Model Insights — Feature Importance (Tel Aviv v2)
+## Model Insights — Permutation Importance (v3.2_clean)
 
-The chart below shows which features have the strongest impact on the Tel Aviv price prediction model (RandomForest v2).
+Top drivers: **netArea, grossArea, constructionYear, building_age_at_tx, rooms, floors/floor, parking**.
 
-![Feature importance for Tel Aviv RF v2](pics/tel_aviv_v2_feature_importance.png)  
-*Figure X: RandomForest v2 feature importance — key drivers of Tel Aviv apartment prices.*
+![Permutation Importance](pics/tel_aviv_v3_2_perm_importance.png)
 
 
 
