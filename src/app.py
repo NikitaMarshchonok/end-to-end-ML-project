@@ -26,6 +26,10 @@ MODEL_TEL_AVIV_V1_PATH = os.path.join(BASE_DIR, "models", "tel_aviv_real_estate_
 MODEL_TEL_AVIV_V2_PATH = os.path.join(BASE_DIR, "models", "tel_aviv_real_estate_model_v2.pkl")
 TEL_AVIV_V2_FEATS_PATH = os.path.join(BASE_DIR, "models", "tel_aviv_feature_cols_v2.json")
 
+#Tel Aviv (v3.2)
+MODEL_TEL_AVIV_V3_2_CLEAN_CLI_PATH = os.path.join(BASE_DIR, "models", "tel_aviv_real_estate_model_v3_2_clean_cli.pkl")
+TEL_AVIV_V3_2_FEATS_PATH = os.path.join(BASE_DIR, "models", "tel_aviv_feature_cols_v3_2_clean_cli.json")
+
 
 # =========================================================
 # Load models
