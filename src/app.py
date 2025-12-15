@@ -417,7 +417,7 @@ app.layout = html.Div(
             id="section-telaviv-v2-opt",
             style={**CARD_STYLE, "background": "#f7f9ff"},
             children=[
-                html.H4("Tel Aviv v2 — optional fields", style={"marginTop": "0"}),
+                html.H4("Tel Aviv v2 / v3.2_clean — optional fields", style={"marginTop": "0"}),
                 html.Div("These improve accuracy for v2 if you know them. You can leave them empty.", style=MUTED_TEXT),
 
                 html.Label("Gross area (m²)", style=LABEL_STYLE),
@@ -497,9 +497,10 @@ app.layout = html.Div(
     Input("model-choice", "value"),
 )
 def toggle_sections(model_choice):
-    show_telaviv = model_choice in ("tel_aviv_v1", "tel_aviv_v2")
-    show_telaviv_v2_opt = model_choice == "tel_aviv_v2"
+    show_telaviv = model_choice in ("tel_aviv_v1", "tel_aviv_v2", "tel_aviv_v3_2_clean")
+    show_telaviv_v2_opt = model_choice in ("tel_aviv_v2", "tel_aviv_v3_2_clean")
     show_taiwan = model_choice == "taiwan"
+
 
     telaviv_style = {**CARD_STYLE, "display": "block"} if show_telaviv else {**CARD_STYLE, "display": "none"}
     telaviv_v2_style = {**CARD_STYLE, "background": "#f7f9ff", "display": "block"} if show_telaviv_v2_opt else {**CARD_STYLE, "display": "none"}
@@ -517,6 +518,8 @@ def toggle_sections(model_choice):
     Input("model-choice", "value"),
 )
 def update_button_text(model_choice):
+    if model_choice == "tel_aviv_v3_2_clean":
+        return "Predict with Tel Aviv v3.2_clean (BEST)"
     if model_choice == "tel_aviv_v2":
         return "Predict with Tel Aviv v2"
     if model_choice == "tel_aviv_v1":
