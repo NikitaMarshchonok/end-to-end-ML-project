@@ -132,7 +132,8 @@ def build_tel_aviv_v2_features(
     netarea, rooms, floor, year,
     gross_area=None, floors=None,
     apartments_in_building=None,
-    parking=None, storage=None, roof=None, yard=None
+    parking=None, storage=None, roof=None, yard=None,
+    feature_cols_override=None
 ):
     """
     Build one-row feature vector for Tel Aviv v2 model.
