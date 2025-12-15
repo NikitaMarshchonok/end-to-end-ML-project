@@ -627,6 +627,7 @@ def apply_presets(n1, n2, n3):
     State("input-lat", "value"),
     State("input-long", "value"),
 )
+
 def predict_price(
     n_clicks,
     model_choice,
@@ -637,9 +638,44 @@ def predict_price(
     if not n_clicks:
         return "", ""
 
-    # -------------------------
+    # =====================================================
+    # Tel Aviv v3.2_clean (BEST)
+    # =====================================================
+    if model_choice == "tel_aviv_v3_2_clean":
+        if netarea is None or rooms is None or floor is None or year is None:
+            return "", "Please fill in all required Tel Aviv fields (net area, rooms, floor, year)."
+
+        err = validate_tel_aviv_inputs(netarea, rooms, floor, year, floors_total=floors_total)
+        if err:
+            return "", err
+
+        if model_tel_aviv_v3_2 is None:
+            return "", "Tel Aviv v3.2_clean model file not found."
+
+        try:
+            X = build_tel_aviv_v2_features(
+                netarea=netarea,
+                rooms=rooms,
+                floor=floor,
+                year=year,
+                gross_area=grossarea,
+                floors=floors_total,
+                apartments_in_building=apts,
+                parking=parking,
+                storage=storage,
+                roof=roof,
+                yard=yard,
+                feature_cols_override=tel_aviv_v3_2_feature_cols,
+            )
+            pred_log = model_tel_aviv_v3_2.predict(X)[0]
+            predicted_price = float(np.expm1(pred_log))
+            return f"Tel Aviv model v3.2_clean — estimated apartment price: {predicted_price:,.0f} ₪", ""
+        except Exception as e:
+            return "", f"Error during Tel Aviv v3.2_clean prediction: {e}"
+
+    # =====================================================
     # Tel Aviv v2
-    # -------------------------
+    # =====================================================
     if model_choice == "tel_aviv_v2":
         if netarea is None or rooms is None or floor is None or year is None:
             return "", "Please fill in all required Tel Aviv fields (net area, rooms, floor, year)."
@@ -664,6 +700,7 @@ def predict_price(
                 storage=storage,
                 roof=roof,
                 yard=yard,
+                # для v2 оставляем как было
             )
             pred_log = model_tel_aviv_v2.predict(X)[0]
             predicted_price = float(np.expm1(pred_log))
@@ -671,9 +708,9 @@ def predict_price(
         except Exception as e:
             return "", f"Error during Tel Aviv v2 prediction: {e}"
 
-    # -------------------------
+    # =====================================================
     # Tel Aviv v1
-    # -------------------------
+    # =====================================================
     if model_choice == "tel_aviv_v1":
         if netarea is None or rooms is None or floor is None or year is None:
             return "", "Please fill in all required Tel Aviv fields (net area, rooms, floor, year)."
@@ -692,9 +729,9 @@ def predict_price(
         except Exception as e:
             return "", f"Error during Tel Aviv v1 prediction: {e}"
 
-    # -------------------------
+    # =====================================================
     # Taiwan
-    # -------------------------
+    # =====================================================
     if model_choice == "taiwan":
         if distance is None or convenience is None or lat is None or long_ is None:
             return "", "Please fill in all Taiwan fields."
@@ -707,6 +744,7 @@ def predict_price(
             return "", f"Error during Taiwan prediction: {e}"
 
     return "", "Selected model is not available."
+
 
 
 if __name__ == "__main__":
