@@ -53,9 +53,10 @@ The app converts predictions back using:
 
 ---
 
-##  Results
+## Results (Tel Aviv)
 
-Below are test-split results from the Tel Aviv experiments (trained on `log(price)`):
+### Quick comparison (classic split)
+These are quick baseline experiments on a regular holdout split (trained on `log1p(price)`):
 
 | Model | MAE (₪) | RMSE (₪) | R² |
 |------|---------:|---------:|----:|
@@ -64,6 +65,28 @@ Below are test-split results from the Tel Aviv experiments (trained on `log(pric
 | RandomForest | 673,636 | 1,434,999 | 0.601 |
 | ExtraTrees | 659,631 | 1,445,707 | 0.595 |
 | HistGBR | 729,013 | 1,485,657 | 0.572 |
+
+### Production-style evaluation (time-aware split)
+Evaluation is performed on a **time-aware split** to avoid leakage:
+- **Train:** before `2018-03-25`
+- **Test:** on/after `2018-03-25`
+
+| Version | Model | Split | MAE (₪) | RMSE (₪) | R² |
+|---|---|---:|---:|---:|---:|
+| v2 (FAIR baseline) | RF(500) + median imputer | Time-aware | 1,076,070 | 1,618,660 | 0.5113 |
+| v3 | Tuned RF + missing indicators | Time-aware | 1,025,612 | 1,576,916 | 0.5362 |
+| **v3.2_clean (BEST)** | Tuned RF + missing indicators + **data cleaning** | Time-aware | **928,568** | **1,503,636** | **0.5754** |
+
+#### Data cleaning impact
+- v3 MAE (before cleaning): **1,025,612 ₪**
+- v3.2_clean MAE (after cleaning): **928,568 ₪**
+- Improvement: **97,044 ₪**
+
+#### Error analysis (high-level)
+- Errors grow with **price and area** (luxury / rare properties are harder).
+- Highest MAE is in the top price quartile and largest area quartile.
+- Fixed/filtered issues: `constructionYear > transaction year`, invalid/zero areas, extreme prices.
+
 
 **Conclusion:**  
 Tree-based methods significantly outperform the linear baseline.  
