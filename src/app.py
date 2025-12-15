@@ -89,6 +89,14 @@ MODEL_CARDS = {
         "r2": None,
         "note": "Classic tutorial dataset to demonstrate end-to-end ML + UI.",
     },
+    "tel_aviv_v3_2_clean": {
+    "title": "Tel Aviv model v3.2_clean (BEST — time split + cleaning)",
+    "mae": 928_568,
+    "rmse": 1_503_636,
+    "r2": 0.5754,
+    "note": "RandomForest tuned + missing indicators. Evaluated with time-aware split (train < 2018-03-25, test ≥ 2018-03-25) after data cleaning.",
+},
+
 }
 
 
