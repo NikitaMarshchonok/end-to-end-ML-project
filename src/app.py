@@ -189,7 +189,7 @@ def build_tel_aviv_v2_features(
         "floor_ratio": floor_ratio,
     }
 
-    feature_cols = tel_aviv_v2_feature_cols or TEL_AVIV_V2_FALLBACK_COLS
+    feature_cols = feature_cols_override or tel_aviv_v2_feature_cols or TEL_AVIV_V2_FALLBACK_COLS
     X = pd.DataFrame([row])
 
     for c in feature_cols:
@@ -313,10 +313,13 @@ app = dash.Dash(__name__)
 app.title = "Real Estate Price Prediction"
 
 tel_aviv_options = []
+if model_tel_aviv_v3_2 is not None:
+    tel_aviv_options.append({"label": "Tel Aviv model v3.2_clean (BEST — time split + cleaning)", "value": "tel_aviv_v3_2_clean"})
 if model_tel_aviv_v2 is not None:
     tel_aviv_options.append({"label": "Tel Aviv model v2 (improved, log(price))", "value": "tel_aviv_v2"})
 if model_tel_aviv_v1 is not None:
     tel_aviv_options.append({"label": "Tel Aviv model v1 (baseline)", "value": "tel_aviv_v1"})
+
 
 if not tel_aviv_options:
     tel_aviv_options = [{"label": "Tel Aviv model (not found)", "value": "tel_aviv_missing"}]
