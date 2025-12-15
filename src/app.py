@@ -53,6 +53,16 @@ if os.path.exists(MODEL_TEL_AVIV_V2_PATH):
             tel_aviv_v2_feature_cols = json.load(f)
 
 
+model_tel_aviv_v3_2 = None
+tel_aviv_v3_2_feature_cols = None
+if os.path.exists(MODEL_TEL_AVIV_V3_2_CLEAN_CLI_PATH):
+    model_tel_aviv_v3_2 = joblib.load(MODEL_TEL_AVIV_V3_2_CLEAN_CLI_PATH)
+    if os.path.exists(TEL_AVIV_V3_2_FEATS_PATH):
+        with open(TEL_AVIV_V3_2_FEATS_PATH, "r", encoding="utf-8") as f:
+            tel_aviv_v3_2_feature_cols = json.load(f)
+
+
+
 # =========================================================
 # Metrics / Model cards (hardcoded, portfolio-friendly)
 # =========================================================
