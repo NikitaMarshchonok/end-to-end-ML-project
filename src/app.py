@@ -320,11 +320,11 @@ if model_tel_aviv_v2 is not None:
 if model_tel_aviv_v1 is not None:
     tel_aviv_options.append({"label": "Tel Aviv model v1 (baseline)", "value": "tel_aviv_v1"})
 
-
 if not tel_aviv_options:
     tel_aviv_options = [{"label": "Tel Aviv model (not found)", "value": "tel_aviv_missing"}]
 
 MODEL_OPTIONS = tel_aviv_options + [{"label": "Tutorial model (Taiwan dataset)", "value": "taiwan"}]
+
 
 
 # =========================================================
