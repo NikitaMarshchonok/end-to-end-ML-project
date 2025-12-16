@@ -502,6 +502,7 @@ def toggle_sections(model_choice):
     show_taiwan = model_choice == "taiwan"
 
 
+
     telaviv_style = {**CARD_STYLE, "display": "block"} if show_telaviv else {**CARD_STYLE, "display": "none"}
     telaviv_v2_style = {**CARD_STYLE, "background": "#f7f9ff", "display": "block"} if show_telaviv_v2_opt else {**CARD_STYLE, "display": "none"}
     taiwan_style = {**CARD_STYLE, "display": "block"} if show_taiwan else {**CARD_STYLE, "display": "none"}
