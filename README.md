@@ -1,98 +1,91 @@
-#  Real Estate Price Prediction — Tel Aviv v1/v2 + Taiwan baseline
+# Real Estate Price Prediction — Tel Aviv (v1 / v2 / v3.2_clean) + Taiwan baseline
 
-End-to-end ML project with a clean Dash interface for **real estate price prediction**.  
-The project demonstrates a complete workflow from EDA and feature engineering to model versioning and an interactive UI.
+End-to-end ML portfolio project with a clean **Dash UI** for **real estate price prediction**.  
+Covers the full workflow: data checks → feature engineering → model training/versioning → evaluation → interactive inference UI.
 
-> **Focus:** Tel Aviv market (improved model v2) + a Taiwan tutorial baseline for comparison.
+**Focus:** Tel Aviv market (multiple versions, best is **v3.2_clean**) + Taiwan tutorial baseline for comparison.
 
 ---
 
-##  Problem
+## What this project does
+
+- Predicts apartment prices from property characteristics (**Tel Aviv dataset**)
+- Uses feature engineering + `log1p(price)` training for stability (v2+)
+- Evaluates with a **time-aware split** to reduce leakage (production-style)
+- Provides a simple **Dash web app** with model selector + presets
+- Saves artifacts: model `.pkl`, feature columns `.json`, metrics `.json`
+- Includes **pytest checks** (artifacts + basic sanity)
+
+---
+
+## Problem
 
 Real estate pricing depends on many interacting factors: area, floor, building age, building scale, amenities, and market/time effects.  
-The goal of this project is to build a practical ML solution that:
-
+Goal: build a practical ML solution that:
 - predicts apartment price based on property characteristics,
-- improves accuracy via feature engineering,
+- improves accuracy via feature engineering + cleaning,
 - provides a clean UI for inference,
-- keeps model versions comparable (baseline vs improved).
+- keeps model versions comparable.
 
 ---
 
-##  Approach
+## Data & Features (Tel Aviv)
 
-### 1) Data & EDA
-- Performed exploratory analysis for both:
-  - Tel Aviv dataset
-  - Taiwan tutorial dataset
-- Checked missing values, distributions, and outliers.
-
-### 2) Feature Engineering (Tel Aviv)
-
-**Core features (examples):**
+### Core features (examples)
 - `netArea`, `grossArea`, `rooms`, `floor`, `floors`
 - `apartmentsInBuilding`, `parking`, `storage`, `roof`, `yard`
 - `constructionYear`
 
-**Engineered features:**
-- `tx_year`, `tx_month`, `tx_quarter` *(proxy-driven from current date in the app)*
+### Engineered features (v2+)
+- `tx_year`, `tx_month`, `tx_quarter`
 - `building_age_at_tx`
 - `floor_ratio`
 
-### 3) Target Transformation
-Tel Aviv v2 was trained on:
+### Target transform (v2+)
+Models are trained on:
 - `log1p(price)`
 
-The app converts predictions back using:
+Prediction is converted back via:
 - `expm1(pred_log)`
-
-### 4) Modeling Strategy
-- **Tel Aviv v1** — baseline with minimal inputs
-- **Tel Aviv v2** — improved model with expanded feature space + log target
-- **Taiwan model** — tutorial baseline
 
 ---
 
-## Results (Tel Aviv)
+## Results
 
-### Quick comparison (classic split)
-These are quick baseline experiments on a regular holdout split (trained on `log1p(price)`):
-
-| Model | MAE (₪) | RMSE (₪) | R² |
-|------|---------:|---------:|----:|
-| Linear Regression | 858,171 | 1,778,791 | 0.387 |
-| GradientBoostingRegressor | 718,143 | 1,433,070 | 0.602 |
-| RandomForest | 673,636 | 1,434,999 | 0.601 |
-| ExtraTrees | 659,631 | 1,445,707 | 0.595 |
-| HistGBR | 729,013 | 1,485,657 | 0.572 |
-
-### Production-style evaluation (time-aware split)
-Evaluation is performed on a **time-aware split** to avoid leakage:
+### Tel Aviv — Time-aware evaluation (recommended)
+Evaluation uses a **time-aware split** to avoid leakage:
 - **Train:** before `2018-03-25`
 - **Test:** on/after `2018-03-25`
 
-| Version | Model | Split | MAE (₪) | RMSE (₪) | R² |
+| Version | Model | Split | MAE (NIS) | RMSE (NIS) | R² |
 |---|---|---:|---:|---:|---:|
-| v2 (FAIR baseline) | RF(500) + median imputer | Time-aware | 1,076,070 | 1,618,660 | 0.5113 |
+| v2 (fair baseline) | RF(500) + median imputer | Time-aware | 1,076,070 | 1,618,660 | 0.5113 |
 | v3 | Tuned RF + missing indicators | Time-aware | 1,025,612 | 1,576,916 | 0.5362 |
 | **v3.2_clean (BEST)** | Tuned RF + missing indicators + **data cleaning** | Time-aware | **928,568** | **1,503,636** | **0.5754** |
 
-#### Data cleaning impact
-- v3 MAE (before cleaning): **1,025,612 ₪**
-- v3.2_clean MAE (after cleaning): **928,568 ₪**
-- Improvement: **97,044 ₪**
+### Data cleaning impact
+- v3 MAE (before cleaning): **1,025,612 NIS**
+- v3.2_clean MAE (after cleaning): **928,568 NIS**
+- Improvement: **97,044 NIS**
 
-#### Error analysis (high-level)
+### Error analysis (high-level)
 - Errors grow with **price and area** (luxury / rare properties are harder).
 - Highest MAE is in the top price quartile and largest area quartile.
-- Fixed/filtered issues: `constructionYear > transaction year`, invalid/zero areas, extreme prices.
+- Detected & handled data issues: `constructionYear > transaction year`, invalid/zero areas, extreme prices.
 
+### Feature importance (permutation, time split)
+Top drivers: **netArea, grossArea, constructionYear, building_age_at_tx, rooms, floors/floor, parking**.
 
-**Conclusion:**  
-Tree-based methods significantly outperform the linear baseline.  
-The **Tel Aviv v2 pipeline** is the strongest version of the project thanks to richer features and log-target training.
+![Permutation Importance](pics/tel_aviv_v3_2_perm_importance.png)
 
 ---
+
+## Demo (Dash UI)
+
+### Run locally
+```bash
+python src/app.py
+
 
 ##  Demo (Dash UI)
 
