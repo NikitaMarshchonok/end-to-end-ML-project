@@ -80,12 +80,6 @@ Top drivers: **netArea, grossArea, constructionYear, building_age_at_tx, rooms, 
 
 ---
 
-## Demo (Dash UI)
-
-### Run locally
-```bash
-python src/app.py
-
 
 ##  Demo (Dash UI)
 
@@ -99,19 +93,34 @@ Open:
 http://127.0.0.1:8050
 ```
 
+##  Run with Docker
+```
+docker compose up --build
+```
+Open:
+     http://localhost:8050
+
+
+Tests:
+    pytest -q
+
+
 
 ##  Project Structure
 
-```bash
-END-TO-END ML PROJECT/
+```
+end-to-end-ml-project/
 ├── data/
 │   ├── Real_estate_Tel_Aviv_20_years.csv
 │   └── Real_Estate.csv
 ├── models/
-│   ├── real_estate_model.pkl
+│   ├── Real_estate_model.pkl
 │   ├── tel_aviv_real_estate_model.pkl
 │   ├── tel_aviv_real_estate_model_v2.pkl
-│   └── tel_aviv_feature_cols_v2.json
+│   ├── tel_aviv_feature_cols_v2.json
+│   ├── tel_aviv_real_estate_model_v3_2_clean_cli.pkl
+│   ├── tel_aviv_metrics_v3_2_clean_cli.json
+│   └── tel_aviv_feature_cols_v3_2_clean_cli.json
 ├── notebooks/
 │   ├── real_estate_eda.ipynb
 │   ├── israel_real_estate_eda.ipynb
@@ -122,13 +131,20 @@ END-TO-END ML PROJECT/
 │   ├── 2.png
 │   ├── 3.png
 │   ├── 4.png
-│   └── 5.png
+│   ├── 5.png
+│   └── tel_aviv_v3_2_perm_importance.png
 ├── src/
 │   ├── app.py
 │   └── train_model.py
+├── tests/
+│   └── test_metrics_json.py
+├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt
 └── README.md
 ```
+
+
 
 ##  Screenshots
 
@@ -159,6 +175,13 @@ END-TO-END ML PROJECT/
 **Tel Aviv v2 — optional fields**
 ![Tel Aviv v2 optional fields](pics/5.png)
 *Figure 5: Optional v2 inputs that can improve prediction accuracy.*
+
+## Model Insights — Permutation Importance (v3.2_clean)
+
+Top drivers: **netArea, grossArea, constructionYear, building_age_at_tx, rooms, floors/floor, parking**.
+
+![Permutation Importance](pics/tel_aviv_v3_2_perm_importance.png)
+
 
 
 ##  Installation
@@ -212,13 +235,6 @@ MLOps-lite:
  Simple /predict API wrapper
 ```
 
-
-
-## Model Insights — Permutation Importance (v3.2_clean)
-
-Top drivers: **netArea, grossArea, constructionYear, building_age_at_tx, rooms, floors/floor, parking**.
-
-![Permutation Importance](pics/tel_aviv_v3_2_perm_importance.png)
 
 
 
