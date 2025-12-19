@@ -6,3 +6,4 @@ plotly
 matplotlib
 seaborn
 joblib==1.5.1
+pytest
