@@ -22,11 +22,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
+          echo "=== requirements-dev.txt ==="
+          cat requirements-dev.txt
           pip install -r requirements-dev.txt
 
       - name: Check pytest
         run: |
-          pytest --version
+          python -m pytest --version
 
       - name: Debug repo tree
         run: |
@@ -41,7 +43,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -q
+          python -m pytest -q
 
   docker-build:
     runs-on: ubuntu-latest
