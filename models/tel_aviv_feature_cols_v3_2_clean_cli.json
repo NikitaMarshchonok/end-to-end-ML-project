@@ -1,0 +1,18 @@
+[
+  "netArea",
+  "grossArea",
+  "rooms",
+  "floor",
+  "floors",
+  "apartmentsInBuilding",
+  "parking",
+  "storage",
+  "roof",
+  "yard",
+  "constructionYear",
+  "tx_year",
+  "tx_month",
+  "tx_quarter",
+  "building_age_at_tx",
+  "floor_ratio"
+]

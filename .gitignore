@@ -35,3 +35,10 @@ notebooks/models/
 data/
 models/
 *.pkl
+
+
+# --- Allow model artifacts for this repo (needed for CI/demo) ---
+!models/
+!models/*.pkl
+!models/*.json
+
