@@ -1,44 +1,42 @@
-# --- Виртуальное окружение ---
+# Виртуальное окружение
 .venv/
 venv/
 env/
 
-# --- Кеши Python ---
+# Кеши Python
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-*.pdb
 *.egg-info/
 *.egg
 
-# --- Jupyter ноутбуки ---
+# Jupyter
 .ipynb_checkpoints/
 
-# --- Настройки IDE ---
+# Настройки IDE
 .vscode/
 .idea/
 
-# --- Разное системное ---
+# Системный мусор
 .DS_Store
 
-# --- Логи ---
+# Логи
 logs/
 *.log
 
-# --- Секреты (если появятся) ---
+# Секреты
 .env
 .env.*
-*.pkl
+
+
+# --- prevent accidental commits ---
 notebooks/models/
-*.pkl
-data/
-models/
-*.pkl
 
+# ignore ALL models by default
+models/*
 
-# --- Allow model artifacts for this repo (needed for CI/demo) ---
-!models/
-!models/*.pkl
-!models/*.json
-
+# allow only required CLI artifacts (tracked in repo)
+!models/tel_aviv_real_estate_model_v3_2_clean_cli.pkl
+!models/tel_aviv_feature_cols_v3_2_clean_cli.json
+!models/tel_aviv_metrics_v3_2_clean_cli.json
