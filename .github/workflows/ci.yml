@@ -28,6 +28,13 @@ jobs:
           cat requirements-dev.txt
           python -m pip install -r requirements-dev.txt
 
+      - name: Debug models (verify LFS)
+        run: |
+          echo "=== models ==="
+          ls -la models || true
+          echo "=== model size ==="
+          ls -lh models/tel_aviv_real_estate_model_v3_2_clean_cli.pkl || true
+
       - name: Check pytest
         run: |
           python -m pytest --version
@@ -49,4 +56,3 @@ jobs:
       - name: Docker build
         run: |
           docker build -t tel-aviv-ml:ci .
-
