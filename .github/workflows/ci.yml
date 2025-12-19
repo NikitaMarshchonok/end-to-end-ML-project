@@ -24,22 +24,11 @@ jobs:
           python -m pip install --upgrade pip
           echo "=== requirements-dev.txt ==="
           cat requirements-dev.txt
-          pip install -r requirements-dev.txt
+          python -m pip install -r requirements-dev.txt
 
       - name: Check pytest
         run: |
           python -m pytest --version
-
-      - name: Debug repo tree
-        run: |
-          pwd
-          ls -la
-          echo "=== models ==="
-          ls -la models || true
-          echo "=== data ==="
-          ls -la data || true
-          echo "=== tests ==="
-          ls -la tests || true
 
       - name: Run tests
         run: |
