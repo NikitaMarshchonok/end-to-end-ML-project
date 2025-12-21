@@ -3,6 +3,7 @@ import json
 import joblib
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 from datetime import datetime
 
 import dash
@@ -32,6 +33,82 @@ def safe_load_json(path: str) -> dict | list | None:
             return json.load(f)
     except Exception:
         return None
+
+
+
+# =========================================================
+# UI helpers
+# =========================================================
+def ui_result(title: str, value: str, subtitle: str | None = None):
+    """Return a nice result block (Dash components)."""
+    children = [
+        html.Div(title, className="resultLabel"),
+        html.Div(value, className="resultValue"),
+    ]
+    if subtitle:
+        children.append(html.Div(subtitle, className="resultSub"))
+    return html.Div(children, className="resultInner")
+
+
+def get_feature_importances(model_obj):
+    """Try to extract feature_importances_ from estimator or a Pipeline."""
+    if model_obj is None:
+        return None
+
+    if hasattr(model_obj, "feature_importances_"):
+        return getattr(model_obj, "feature_importances_", None)
+
+    named_steps = getattr(model_obj, "named_steps", None)
+    if isinstance(named_steps, dict):
+        for step in reversed(list(named_steps.values())):
+            if hasattr(step, "feature_importances_"):
+                return getattr(step, "feature_importances_", None)
+
+    return None
+
+
+def build_feature_importance_figure(model_obj, feature_cols: list[str], top_k: int = 12):
+    imp = get_feature_importances(model_obj)
+    if imp is None or feature_cols is None:
+        fig = go.Figure()
+        fig.update_layout(
+            height=120,
+            margin=dict(l=10, r=10, t=10, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            annotations=[
+                dict(
+                    text="Feature importance is not available for this model.",
+                    x=0.5, y=0.5, xref="paper", yref="paper",
+                    showarrow=False,
+                    font=dict(size=13),
+                )
+            ],
+        )
+        return fig
+
+    imp = np.array(list(imp), dtype=float)
+    n = min(len(feature_cols), len(imp))
+    feat = np.array(feature_cols[:n], dtype=object)
+    imp = imp[:n]
+
+    order = np.argsort(imp)[-top_k:]
+    feat_top = feat[order]
+    imp_top = imp[order]
+
+    fig = go.Figure(data=[go.Bar(x=imp_top, y=feat_top, orientation="h")])
+    fig.update_layout(
+        height=360,
+        margin=dict(l=10, r=10, t=10, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(title="importance", gridcolor="rgba(148,163,184,.25)", zeroline=False),
+        yaxis=dict(title="", automargin=True, gridcolor="rgba(148,163,184,.10)"),
+        showlegend=False,
+    )
+    return fig
 
 
 # =========================================================
@@ -414,6 +491,26 @@ input:focus{
   color:var(--muted);
   font-size:12px;
 }
+
+/* Alerts + results */
+.alert{
+  margin-top:12px;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  font-weight:800;
+}
+.alert:empty{display:none}
+.alertError{background:#fff1f2;border-color:#fecdd3;color:#9f1239}
+.result:empty{display:none}
+.resultInner{display:flex;flex-direction:column;gap:6px;align-items:center}
+.resultLabel{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.resultValue{font-size:28px;font-weight:1000;letter-spacing:-.02em}
+.resultSub{font-size:12px;color:var(--muted);font-weight:700}
+
+/* Graph */
+.graphWrap{margin-top:10px}
+
 """
 
 # ✅ ВОТ ЭТО И ЕСТЬ ПРАВИЛЬНОЕ ПОДКЛЮЧЕНИЕ CSS В ОДНОМ ФАЙЛЕ
@@ -505,6 +602,28 @@ app.layout = html.Div(
 
         html.Div(id="model-card", className="card modelCard"),
 
+        # Explainability / feature importance (RF models)
+        html.Div(
+            id="section-fi",
+            className="card",
+            children=[
+                html.Div("Explainability", className="cardTitle"),
+                html.Div("Top features driving the prediction (RandomForest).", className="muted"),
+                html.Div(className="hr"),
+                html.Div(
+                    className="graphWrap",
+                    children=[
+                        dcc.Graph(
+                            id="feat-importance-graph",
+                            config={"displayModeBar": False},
+                            figure=go.Figure(),
+                        )
+                    ],
+                ),
+            ],
+        ),
+
+
         # Tel Aviv required
         html.Div(
             id="section-telaviv",
@@ -591,7 +710,7 @@ app.layout = html.Div(
             className="card",
             children=[
                 html.Button("Predict price", id="predict-button", n_clicks=0, className="primaryBtn"),
-                html.Div(id="validation-output", className="error"),
+                html.Div(id="validation-output", className="alert alertError"),
             ],
         ),
 
@@ -610,17 +729,20 @@ app.layout = html.Div(
     Output("section-telaviv", "style"),
     Output("section-telaviv-opt", "style"),
     Output("section-taiwan", "style"),
+    Output("section-fi", "style"),
     Input("model-choice", "value"),
 )
+
 def toggle_sections(model_choice):
     show_telaviv = model_choice in ("tel_aviv_v1", "tel_aviv_v2", "tel_aviv_v3_2_clean")
     show_opt = model_choice in ("tel_aviv_v2", "tel_aviv_v3_2_clean")
     show_taiwan = model_choice == "taiwan"
 
+    show_fi = model_choice in ("tel_aviv_v2", "tel_aviv_v3_2_clean")
     def s(show: bool):
         return {"display": "block"} if show else {"display": "none"}
 
-    return s(show_telaviv), s(show_opt), s(show_taiwan)
+    return s(show_telaviv), s(show_opt), s(show_taiwan), s(show_fi)
 
 
 # =========================================================
@@ -683,6 +805,35 @@ def update_model_card(model_choice):
 
         html.Div(card.get("note", ""), className="muted", style={"marginTop": "12px"}),
     ]
+
+
+
+# =========================================================
+# Feature importance
+# =========================================================
+@app.callback(
+    Output("feat-importance-graph", "figure"),
+    Input("model-choice", "value"),
+)
+def update_feat_importance(model_choice):
+    if model_choice == "tel_aviv_v3_2_clean" and model_tel_aviv_v3_2 is not None:
+        cols = tel_aviv_v3_2_feature_cols or tel_aviv_v2_feature_cols or TEL_AVIV_V2_FALLBACK_COLS
+        return build_feature_importance_figure(model_tel_aviv_v3_2, cols, top_k=12)
+
+    if model_choice == "tel_aviv_v2" and model_tel_aviv_v2 is not None:
+        cols = tel_aviv_v2_feature_cols or TEL_AVIV_V2_FALLBACK_COLS
+        return build_feature_importance_figure(model_tel_aviv_v2, cols, top_k=12)
+
+    fig = go.Figure()
+    fig.update_layout(
+        height=10,
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+    )
+    return fig
 
 
 # =========================================================
@@ -769,7 +920,7 @@ def predict_price(
             pred_log = float(model_tel_aviv_v3_2.predict(X)[0])
             price = float(np.expm1(pred_log))
             price = max(price, 0.0)
-            return f"Tel Aviv v3.2_clean — estimated price: {price:,.0f} ₪", ""
+            return ui_result("Estimated price", f"{price:,.0f} ₪", "Model: Tel Aviv v3.2_clean"), ""
         except Exception as e:
             return "", f"Error during prediction: {e}"
 
@@ -793,7 +944,7 @@ def predict_price(
             pred_log = float(model_tel_aviv_v2.predict(X)[0])
             price = float(np.expm1(pred_log))
             price = max(price, 0.0)
-            return f"Tel Aviv v2 — estimated price: {price:,.0f} ₪", ""
+            return ui_result("Estimated price", f"{price:,.0f} ₪", "Model: Tel Aviv v2"), ""
         except Exception as e:
             return "", f"Error during prediction: {e}"
 
@@ -809,7 +960,7 @@ def predict_price(
         try:
             X = np.array([[float(netarea), float(rooms), float(floor), float(year)]])
             price = float(model_tel_aviv_v1.predict(X)[0])
-            return f"Tel Aviv v1 — estimated price: {price:,.0f} ₪", ""
+            return ui_result("Estimated price", f"{price:,.0f} ₪", "Model: Tel Aviv v1"), ""
         except Exception as e:
             return "", f"Error during prediction: {e}"
 
@@ -822,7 +973,7 @@ def predict_price(
         try:
             X = np.array([[float(distance), float(convenience), float(lat), float(long_)]])
             pred = float(model_taiwan.predict(X)[0])
-            return f"Taiwan — predicted house price of unit area: {pred:,.2f}", ""
+            return ui_result("Predicted price (unit area)", f"{pred:,.2f}", "Model: Taiwan"), ""
         except Exception as e:
             return "", f"Error during prediction: {e}"
 
@@ -832,5 +983,5 @@ def predict_price(
 if __name__ == "__main__":
     # Чтобы не плодились 2 процесса и не ловить “порт занят”
     port = int(os.environ.get("PORT", "8050"))
-    debug = os.environ.get("DEBUG", "1") == "1"
+    debug = os.environ.get("DEBUG", "0") == "1"
     app.run(debug=debug, use_reloader=False, host="0.0.0.0", port=port)
