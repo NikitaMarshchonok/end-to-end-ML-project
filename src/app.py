@@ -976,7 +976,7 @@ def predict_price(
             subs = [f"Model: {title}"] + [f"{lbl}: {fmt_ils(lo)} – {fmt_ils(hi)}" for (lbl, lo, hi) in ranges] + [
                 "Note: range is based on test-set error metrics (not an appraisal)."
             ]
-            return ui_result("Estimated price", f"{price:,.0f} ₪", subtitle=subs), 
+            return ui_result("Estimated price", f"{price:,.0f} ₪", subtitle=subs), ""
         except Exception as e:
             return "", f"Error during prediction: {e}"
 
@@ -1005,7 +1005,7 @@ def predict_price(
             subs = [f"Model: {title}"] + [f"{lbl}: {fmt_ils(lo)} – {fmt_ils(hi)}" for (lbl, lo, hi) in ranges] + [
                 "Note: range is based on test-set error metrics (not an appraisal)."
             ]
-            return ui_result("Estimated price", f"{price:,.0f} ₪", subtitle=subs), 
+            return ui_result("Estimated price", f"{price:,.0f} ₪", subtitle=subs), ""
         except Exception as e:
             return "", f"Error during prediction: {e}"
 
@@ -1026,7 +1026,7 @@ def predict_price(
             subs = [f"Model: {title}"] + [f"{lbl}: {fmt_ils(lo)} – {fmt_ils(hi)}" for (lbl, lo, hi) in ranges] + [
                 "Note: range is based on test-set error metrics (not an appraisal)."
             ]
-            return ui_result("Estimated price", f"{price:,.0f} ₪", subtitle=subs), 
+            return ui_result("Estimated price", f"{price:,.0f} ₪", subtitle=subs), ""
         except Exception as e:
             return "", f"Error during prediction: {e}"
 
@@ -1044,7 +1044,7 @@ def predict_price(
             subs = [f"Model: {title}"] + [f"{lbl}: {lo:,.2f} – {hi:,.2f}" for (lbl, lo, hi) in ranges] + [
                 "Note: tutorial dataset units (not ILS)."
             ]
-            return ui_result("Predicted price (unit area)", f"{pred:,.2f}", subtitle=subs), 
+            return ui_result("Predicted price (unit area)", f"{pred:,.2f}", subtitle=subs), ""
         except Exception as e:
             return "", f"Error during prediction: {e}"
 
