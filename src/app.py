@@ -730,3 +730,126 @@ app.layout = html.Div(
                         html.Div([html.Label("Parking spots", className="label"), dcc.Input(id="input-parking", type="number", placeholder="e.g. 1", className="input")]),
                         html.Div([html.Label("Storage", className="label"), dcc.Input(id="input-storage", type="number", placeholder="e.g. 1", className="input")]),
                         html.Div([html.Label("Roof area", className="label"),
+                                  
+
+                                                 ],
+                ),
+            ],
+        ),
+
+        # Taiwan
+        html.Div(
+            id="section-taiwan",
+            className="card",
+            children=[
+                html.Div("Taiwan — inputs", className="cardTitle"),
+                html.Div("Use these fields only when Taiwan model is selected.", className="muted"),
+                html.Div(className="hr"),
+
+                html.Div(
+                    className="grid2",
+                    children=[
+                        html.Div([html.Label("Distance to MRT", className="label"), dcc.Input(id="input-distance", type="number", placeholder="e.g. 400", className="input")]),
+                        html.Div([html.Label("Convenience stores", className="label"), dcc.Input(id="input-convenience", type="number", placeholder="e.g. 4", className="input")]),
+                        html.Div([html.Label("Latitude", className="label"), dcc.Input(id="input-lat", type="number", placeholder="e.g. 24.98", className="input")]),
+                        html.Div([html.Label("Longitude", className="label"), dcc.Input(id="input-long", type="number", placeholder="e.g. 121.54", className="input")]),
+                    ],
+                ),
+            ],
+        ),
+
+        # Action
+        html.Div(
+            className="card",
+            children=[
+                html.Button("Predict price", id="predict-button", n_clicks=0, className="primaryBtn"),
+                html.Div(id="validation-output", className="alert alertError"),
+            ],
+        ),
+
+        # Result
+        html.Div(id="prediction-output", className="result", children=""),
+
+        html.Div("Portfolio demo • Dash UI • Multiple model versions • Time-aware evaluation", className="footer"),
+    ],
+)
+
+
+# =========================================================
+# Visibility
+# =========================================================
+@app.callback(
+    Output("section-telaviv", "style"),
+    Output("section-telaviv-opt", "style"),
+    Output("section-taiwan", "style"),
+    Output("section-fi", "style"),
+    Input("model-choice", "value"),
+)
+
+def toggle_sections(model_choice):
+    show_telaviv = model_choice in ("tel_aviv_v1", "tel_aviv_v2", "tel_aviv_v3_2_clean")
+    show_opt = model_choice in ("tel_aviv_v2", "tel_aviv_v3_2_clean")
+    show_taiwan = model_choice == "taiwan"
+
+    show_fi = model_choice in ("tel_aviv_v2", "tel_aviv_v3_2_clean")
+    def s(show: bool):
+        return {"display": "block"} if show else {"display": "none"}
+
+    return s(show_telaviv), s(show_opt), s(show_taiwan), s(show_fi)
+
+
+# =========================================================
+# Button label
+# =========================================================
+@app.callback(
+    Output("predict-button", "children"),
+    Input("model-choice", "value"),
+)
+def update_button_text(model_choice):
+    if model_choice == "tel_aviv_v3_2_clean":
+        return "Predict with Tel Aviv v3.2_clean (BEST)"
+    if model_choice == "tel_aviv_v2":
+        return "Predict with Tel Aviv v2"
+    if model_choice == "tel_aviv_v1":
+        return "Predict with Tel Aviv v1"
+    if model_choice == "taiwan":
+        return "Predict with Taiwan model"
+    return "Predict price"
+
+
+# =========================================================
+# Model Card
+# =========================================================
+@app.callback(
+    Output("model-card", "children"),
+    Input("model-choice", "value"),
+)
+def update_model_card(model_choice):
+    card = MODEL_CARDS.get(model_choice)
+    if not card:
+        return [html.Div("Model info not available.", className="muted")]
+
+    def fmt_money(v):
+        return f"{int(v):,} ₪" if v is not None else "—"
+
+    def fmt_num(v):
+        return f"{float(v):.3f}" if v is not None else "—"
+
+    pill = card.get("pill", "MODEL")
+
+    return [
+        html.Div(
+            className="rowBetween",
+            children=[
+                html.Div("Model card", className="cardTitle", style={"marginBottom": "0"}),
+                html.Span([html.Span(className="dot"), f" {pill}"], className="pill"),
+            ],
+        ),
+        html.Div(card["title"], className="bigTitle", style={"marginTop": "10px"}),
+
+        html.Div(
+            className="kpiRow",
+            children=[
+                html.Div([html.Div("MAE", className="k"), html.Div(fmt_money(card.get("mae")), className="v")], className="kpi"),
+                html.Div([html.Div("RMSE", className="k"), html.Div(fmt_money(card.get("rmse")), className="v")], className="kpi"),
+                html.Div([html.Div("R²", className="k"), html.Div(fmt_num(card.get("r2")), className="v")], className="kpi"),
