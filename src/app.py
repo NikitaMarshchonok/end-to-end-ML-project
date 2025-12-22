@@ -565,3 +565,168 @@ input:focus{
 
 """
 
+# ✅ ВОТ ЭТО И ЕСТЬ ПРАВИЛЬНОЕ ПОДКЛЮЧЕНИЕ CSS В ОДНОМ ФАЙЛЕ
+app.index_string = f"""
+<!DOCTYPE html>
+<html>
+  <head>
+    {{%metas%}}
+    <title>{{%title%}}</title>
+    {{%favicon%}}
+    {{%css%}}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>{CSS}</style>
+  </head>
+  <body>
+    {{%app_entry%}}
+    <footer>
+      {{%config%}}
+      {{%scripts%}}
+      {{%renderer%}}
+    </footer>
+  </body>
+</html>
+"""
+
+
+# =========================================================
+# Options
+# =========================================================
+MODEL_OPTIONS = []
+if model_tel_aviv_v3_2 is not None:
+    MODEL_OPTIONS.append({"label": "Tel Aviv model v3.2_clean (BEST — time split + cleaning)", "value": "tel_aviv_v3_2_clean"})
+if model_tel_aviv_v2 is not None:
+    MODEL_OPTIONS.append({"label": "Tel Aviv model v2 (improved, log(price))", "value": "tel_aviv_v2"})
+if model_tel_aviv_v1 is not None:
+    MODEL_OPTIONS.append({"label": "Tel Aviv model v1 (baseline)", "value": "tel_aviv_v1"})
+if model_taiwan is not None:
+    MODEL_OPTIONS.append({"label": "Tutorial model (Taiwan dataset)", "value": "taiwan"})
+
+if not MODEL_OPTIONS:
+    MODEL_OPTIONS = [{"label": "No models found in /models", "value": "missing"}]
+
+
+PRESETS = {
+    "studio": {"netarea": 35, "rooms": 1.0, "floor": 2, "year": 1995},
+    "family": {"netarea": 85, "rooms": 3.0, "floor": 5, "year": 2008},
+    "penthouse": {"netarea": 150, "rooms": 4.5, "floor": 18, "year": 2020},
+}
+
+
+# =========================================================
+# Layout
+# =========================================================
+app.layout = html.Div(
+    className="container",
+    children=[
+        html.Div(
+            className="header",
+            children=[
+                html.H1("Real Estate Price Prediction", className="h1"),
+                html.Div("Choose a model and fill the corresponding fields.", className="sub"),
+                html.Div(
+                    className="badges",
+                    children=[
+                        html.Span([html.Span(className="dot"), " UI ready"], className="pill"),
+                        html.Span([html.Span(className="dot"), f" Build: {APP_BUILD}"], className="pill"),
+                    ],
+                ),
+            ],
+        ),
+
+        html.Div(
+            className="card",
+            children=[
+                html.Div("Select model", className="cardTitle"),
+                dcc.RadioItems(
+                    id="model-choice",
+                    options=MODEL_OPTIONS,
+                    value=MODEL_OPTIONS[0]["value"],
+                    className="radioWrap",
+                    labelStyle={"display": "block", "marginTop": "10px", "fontWeight": "800"},
+                    style={"fontSize": "14px"},
+                ),
+                html.Div("Tip: v2/v3 models use engineered features and log(price).", className="muted", style={"marginTop": "10px"}),
+            ],
+        ),
+
+        html.Div(id="model-card", className="card modelCard"),
+
+        # Explainability / feature importance (RF models)
+        html.Div(
+            id="section-fi",
+            className="card",
+            children=[
+                html.Div("Explainability", className="cardTitle"),
+                html.Div("Top features driving the prediction (RandomForest).", className="muted"),
+                html.Div(className="hr"),
+                html.Div(
+                    className="graphWrap",
+                    children=[
+                        dcc.Graph(
+                            id="feat-importance-graph",
+                            config={"displayModeBar": False},
+                            figure=go.Figure(),
+                        )
+                    ],
+                ),
+            ],
+        ),
+
+
+        # Tel Aviv required
+        html.Div(
+            id="section-telaviv",
+            className="card",
+            children=[
+                html.Div("Tel Aviv — required inputs", className="cardTitle"),
+
+                html.Div(
+                    children=[
+                        html.Div("Presets", className="label"),
+                        html.Div(
+                            className="btnRow",
+                            children=[
+                                html.Button("1-room studio", id="preset-studio", n_clicks=0, className="presetBtn"),
+                                html.Button("3-room family", id="preset-family", n_clicks=0, className="presetBtn"),
+                                html.Button("Penthouse", id="preset-penthouse", n_clicks=0, className="presetBtn"),
+                            ],
+                        ),
+                        html.Div("Click a preset to auto-fill realistic values.", className="muted"),
+                        html.Div(className="hr"),
+                    ]
+                ),
+
+                html.Div(
+                    className="grid4",
+                    children=[
+                        html.Div([html.Label("Net area (m²) *", className="label"), dcc.Input(id="input-netarea", type="number", placeholder="e.g. 80", className="input")]),
+                        html.Div([html.Label("Rooms *", className="label"), dcc.Input(id="input-rooms", type="number", placeholder="e.g. 3", className="input")]),
+                        html.Div([html.Label("Floor *", className="label"), dcc.Input(id="input-floor", type="number", placeholder="e.g. 4", className="input")]),
+                        html.Div([html.Label("Construction year *", className="label"), dcc.Input(id="input-year", type="number", placeholder="e.g. 2010", className="input")]),
+                    ],
+                ),
+                html.Div("(* required for Tel Aviv models)", className="muted", style={"marginTop": "10px"}),
+            ],
+        ),
+
+        # Tel Aviv optional
+        html.Div(
+            id="section-telaviv-opt",
+            className="card",
+            children=[
+                html.Div("Tel Aviv v2 / v3.2_clean — optional fields", className="cardTitle"),
+                html.Div("These can improve accuracy. You can leave them empty.", className="muted"),
+                html.Div(className="hr"),
+
+                html.Div(
+                    className="grid4",
+                    children=[
+                        html.Div([html.Label("Gross area (m²)", className="label"), dcc.Input(id="input-grossarea", type="number", placeholder="e.g. 95", className="input")]),
+                        html.Div([html.Label("Total floors", className="label"), dcc.Input(id="input-floors", type="number", placeholder="e.g. 12", className="input")]),
+                        html.Div([html.Label("Apartments in building", className="label"), dcc.Input(id="input-apts", type="number", placeholder="e.g. 40", className="input")]),
+                        html.Div([html.Label("Parking spots", className="label"), dcc.Input(id="input-parking", type="number", placeholder="e.g. 1", className="input")]),
+                        html.Div([html.Label("Storage", className="label"), dcc.Input(id="input-storage", type="number", placeholder="e.g. 1", className="input")]),
+                        html.Div([html.Label("Roof area", className="label"),
