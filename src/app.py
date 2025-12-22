@@ -240,7 +240,6 @@ MODEL_CARDS = {
 
 
 
-
 # =========================================================
 # Prediction range helpers
 # =========================================================
@@ -729,10 +728,9 @@ app.layout = html.Div(
                         html.Div([html.Label("Apartments in building", className="label"), dcc.Input(id="input-apts", type="number", placeholder="e.g. 40", className="input")]),
                         html.Div([html.Label("Parking spots", className="label"), dcc.Input(id="input-parking", type="number", placeholder="e.g. 1", className="input")]),
                         html.Div([html.Label("Storage", className="label"), dcc.Input(id="input-storage", type="number", placeholder="e.g. 1", className="input")]),
-                        html.Div([html.Label("Roof area", className="label"),
-                                  
-
-                                                 ],
+                        html.Div([html.Label("Roof area", className="label"), dcc.Input(id="input-roof", type="number", placeholder="e.g. 20", className="input")]),
+                        html.Div([html.Label("Yard area", className="label"), dcc.Input(id="input-yard", type="number", placeholder="e.g. 30", className="input")]),
+                    ],
                 ),
             ],
         ),
@@ -853,3 +851,208 @@ def update_model_card(model_choice):
                 html.Div([html.Div("MAE", className="k"), html.Div(fmt_money(card.get("mae")), className="v")], className="kpi"),
                 html.Div([html.Div("RMSE", className="k"), html.Div(fmt_money(card.get("rmse")), className="v")], className="kpi"),
                 html.Div([html.Div("R²", className="k"), html.Div(fmt_num(card.get("r2")), className="v")], className="kpi"),
+            ],
+        ),
+
+        html.Div(card.get("note", ""), className="muted", style={"marginTop": "12px"}),
+    ]
+
+
+
+# =========================================================
+# Feature importance
+# =========================================================
+@app.callback(
+    Output("feat-importance-graph", "figure"),
+    Input("model-choice", "value"),
+)
+def update_feat_importance(model_choice):
+    if model_choice == "tel_aviv_v3_2_clean" and model_tel_aviv_v3_2 is not None:
+        cols = tel_aviv_v3_2_feature_cols or tel_aviv_v2_feature_cols or TEL_AVIV_V2_FALLBACK_COLS
+        return build_feature_importance_figure(model_tel_aviv_v3_2, cols, top_k=12)
+
+    if model_choice == "tel_aviv_v2" and model_tel_aviv_v2 is not None:
+        cols = tel_aviv_v2_feature_cols or TEL_AVIV_V2_FALLBACK_COLS
+        return build_feature_importance_figure(model_tel_aviv_v2, cols, top_k=12)
+
+    fig = go.Figure()
+    fig.update_layout(
+        height=10,
+        margin=dict(l=0, r=0, t=0, b=0),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+    )
+    return fig
+
+
+# =========================================================
+# Presets
+# =========================================================
+@app.callback(
+    Output("input-netarea", "value"),
+    Output("input-rooms", "value"),
+    Output("input-floor", "value"),
+    Output("input-year", "value"),
+    Input("preset-studio", "n_clicks"),
+    Input("preset-family", "n_clicks"),
+    Input("preset-penthouse", "n_clicks"),
+    prevent_initial_call=True,
+)
+def apply_presets(n1, n2, n3):
+    ctx = dash.callback_context
+    trig = ctx.triggered[0]["prop_id"].split(".")[0] if ctx.triggered else ""
+    if trig == "preset-studio":
+        p = PRESETS["studio"]
+    elif trig == "preset-family":
+        p = PRESETS["family"]
+    else:
+        p = PRESETS["penthouse"]
+    return p["netarea"], p["rooms"], p["floor"], p["year"]
+
+
+# =========================================================
+# Predict
+# =========================================================
+@app.callback(
+    Output("prediction-output", "children"),
+    Output("validation-output", "children"),
+    Input("predict-button", "n_clicks"),
+    State("model-choice", "value"),
+
+    # Tel Aviv required
+    State("input-netarea", "value"),
+    State("input-rooms", "value"),
+    State("input-floor", "value"),
+    State("input-year", "value"),
+
+    # Tel Aviv optional
+    State("input-grossarea", "value"),
+    State("input-floors", "value"),
+    State("input-apts", "value"),
+    State("input-parking", "value"),
+    State("input-storage", "value"),
+    State("input-roof", "value"),
+    State("input-yard", "value"),
+
+    # Taiwan
+    State("input-distance", "value"),
+    State("input-convenience", "value"),
+    State("input-lat", "value"),
+    State("input-long", "value"),
+)
+def predict_price(
+    n_clicks, model_choice,
+    netarea, rooms, floor, year,
+    grossarea, floors_total, apts, parking, storage, roof, yard,
+    distance, convenience, lat, long_,
+):
+    if not n_clicks:
+        return "", ""
+
+    # Tel Aviv v3.2
+    if model_choice == "tel_aviv_v3_2_clean":
+        if model_tel_aviv_v3_2 is None:
+            return "", "Tel Aviv v3.2_clean model not available."
+        if None in (netarea, rooms, floor, year):
+            return "", "Please fill required Tel Aviv fields."
+        err = validate_tel_aviv_inputs(netarea, rooms, floor, year, floors_total=floors_total)
+        if err:
+            return "", err
+        try:
+            X = build_tel_aviv_features(
+                netarea, rooms, floor, year,
+                gross_area=grossarea, floors=floors_total,
+                apartments_in_building=apts,
+                parking=parking, storage=storage, roof=roof, yard=yard,
+                feature_cols_override=tel_aviv_v3_2_feature_cols,
+            )
+            pred_log = float(model_tel_aviv_v3_2.predict(X)[0])
+            price = float(np.expm1(pred_log))
+            price = max(price, 0.0)
+            title = MODEL_CARDS.get(model_choice, {}).get("title", "Tel Aviv v3.2_clean")
+            ranges = estimate_price_ranges(model_choice, price)
+            subs = [f"Model: {title}"] + [f"{lbl}: {fmt_ils(lo)} – {fmt_ils(hi)}" for (lbl, lo, hi) in ranges] + [
+                "Note: range is based on test-set error metrics (not an appraisal)."
+            ]
+            return ui_result("Estimated price", f"{price:,.0f} ₪", subtitle=subs), 
+        except Exception as e:
+            return "", f"Error during prediction: {e}"
+
+    # Tel Aviv v2
+    if model_choice == "tel_aviv_v2":
+        if model_tel_aviv_v2 is None:
+            return "", "Tel Aviv v2 model not available."
+        if None in (netarea, rooms, floor, year):
+            return "", "Please fill required Tel Aviv fields."
+        err = validate_tel_aviv_inputs(netarea, rooms, floor, year, floors_total=floors_total)
+        if err:
+            return "", err
+        try:
+            X = build_tel_aviv_features(
+                netarea, rooms, floor, year,
+                gross_area=grossarea, floors=floors_total,
+                apartments_in_building=apts,
+                parking=parking, storage=storage, roof=roof, yard=yard,
+                feature_cols_override=tel_aviv_v2_feature_cols,
+            )
+            pred_log = float(model_tel_aviv_v2.predict(X)[0])
+            price = float(np.expm1(pred_log))
+            price = max(price, 0.0)
+            title = MODEL_CARDS.get(model_choice, {}).get("title", "Tel Aviv v2")
+            ranges = estimate_price_ranges(model_choice, price)
+            subs = [f"Model: {title}"] + [f"{lbl}: {fmt_ils(lo)} – {fmt_ils(hi)}" for (lbl, lo, hi) in ranges] + [
+                "Note: range is based on test-set error metrics (not an appraisal)."
+            ]
+            return ui_result("Estimated price", f"{price:,.0f} ₪", subtitle=subs), 
+        except Exception as e:
+            return "", f"Error during prediction: {e}"
+
+    # Tel Aviv v1
+    if model_choice == "tel_aviv_v1":
+        if model_tel_aviv_v1 is None:
+            return "", "Tel Aviv v1 model not available."
+        if None in (netarea, rooms, floor, year):
+            return "", "Please fill required Tel Aviv fields."
+        err = validate_tel_aviv_inputs(netarea, rooms, floor, year)
+        if err:
+            return "", err
+        try:
+            X = np.array([[float(netarea), float(rooms), float(floor), float(year)]])
+            price = float(model_tel_aviv_v1.predict(X)[0])
+            title = MODEL_CARDS.get(model_choice, {}).get("title", "Tel Aviv v1")
+            ranges = estimate_price_ranges(model_choice, price)
+            subs = [f"Model: {title}"] + [f"{lbl}: {fmt_ils(lo)} – {fmt_ils(hi)}" for (lbl, lo, hi) in ranges] + [
+                "Note: range is based on test-set error metrics (not an appraisal)."
+            ]
+            return ui_result("Estimated price", f"{price:,.0f} ₪", subtitle=subs), 
+        except Exception as e:
+            return "", f"Error during prediction: {e}"
+
+    # Taiwan
+    if model_choice == "taiwan":
+        if model_taiwan is None:
+            return "", "Taiwan model not available."
+        if None in (distance, convenience, lat, long_):
+            return "", "Please fill all Taiwan fields."
+        try:
+            X = np.array([[float(distance), float(convenience), float(lat), float(long_)]])
+            pred = float(model_taiwan.predict(X)[0])
+            title = MODEL_CARDS.get(model_choice, {}).get("title", "Taiwan")
+            ranges = estimate_price_ranges(model_choice, pred)
+            subs = [f"Model: {title}"] + [f"{lbl}: {lo:,.2f} – {hi:,.2f}" for (lbl, lo, hi) in ranges] + [
+                "Note: tutorial dataset units (not ILS)."
+            ]
+            return ui_result("Predicted price (unit area)", f"{pred:,.2f}", subtitle=subs), 
+        except Exception as e:
+            return "", f"Error during prediction: {e}"
+
+    return "", "Selected model is not available."
+
+
+if __name__ == "__main__":
+    # Чтобы не плодились 2 процесса и не ловить “порт занят”
+    port = int(os.environ.get("PORT", "8050"))
+    debug = os.environ.get("DEBUG", "0") == "1"
+    app.run(debug=debug, use_reloader=False, host="0.0.0.0", port=port)
