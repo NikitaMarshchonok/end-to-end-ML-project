@@ -124,3 +124,35 @@ def build_feature_importance_figure(model_obj, feature_cols: list[str], top_k: i
     )
     return fig
 
+
+
+# =========================================================
+# Paths
+# =========================================================
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODELS_DIR = os.path.join(BASE_DIR, "models")
+
+# Taiwan model (учтём регистр на Linux)
+MODEL_TAIWAN_PATH = first_existing(
+    os.path.join(MODELS_DIR, "real_estate_model.pkl"),
+    os.path.join(MODELS_DIR, "Real_estate_model.pkl"),
+)
+
+# Tel Aviv v1
+MODEL_TEL_AVIV_V1_PATH = os.path.join(MODELS_DIR, "tel_aviv_real_estate_model.pkl")
+
+# Tel Aviv v2
+MODEL_TEL_AVIV_V2_PATH = os.path.join(MODELS_DIR, "tel_aviv_real_estate_model_v2.pkl")
+TEL_AVIV_V2_FEATS_PATH = os.path.join(MODELS_DIR, "tel_aviv_feature_cols_v2.json")
+
+# Tel Aviv v3.2 clean (CLI artifacts)
+MODEL_TEL_AVIV_V3_2_CLEAN_CLI_PATH = os.path.join(
+    MODELS_DIR, "tel_aviv_real_estate_model_v3_2_clean_cli.pkl"
+)
+TEL_AVIV_V3_2_FEATS_PATH = os.path.join(
+    MODELS_DIR, "tel_aviv_feature_cols_v3_2_clean_cli.json"
+)
+TEL_AVIV_V3_2_METRICS_PATH = os.path.join(
+    MODELS_DIR, "tel_aviv_metrics_v3_2_clean_cli.json"
+)
+
