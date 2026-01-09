@@ -107,43 +107,7 @@ Tests:
 
 
 
-##  Project Structure
 
-```
-end-to-end-ml-project/
-├── data/
-│   ├── Real_estate_Tel_Aviv_20_years.csv
-│   └── Real_Estate.csv
-├── models/
-│   ├── Real_estate_model.pkl
-│   ├── tel_aviv_real_estate_model.pkl
-│   ├── tel_aviv_real_estate_model_v2.pkl
-│   ├── tel_aviv_feature_cols_v2.json
-│   ├── tel_aviv_real_estate_model_v3_2_clean_cli.pkl
-│   ├── tel_aviv_metrics_v3_2_clean_cli.json
-│   └── tel_aviv_feature_cols_v3_2_clean_cli.json
-├── notebooks/
-│   ├── real_estate_eda.ipynb
-│   ├── israel_real_estate_eda.ipynb
-│   ├── tel_aviv_model_improvement.ipynb
-│   └── israel_tel_aviv_model_improvement.ipynb
-├── pics/
-│   ├── 1.png
-│   ├── 2.png
-│   ├── 3.png
-│   ├── 4.png
-│   ├── 5.png
-│   └── tel_aviv_v3_2_perm_importance.png
-├── src/
-│   ├── app.py
-│   └── train_model.py
-├── tests/
-│   └── test_metrics_json.py
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-└── README.md
-```
 
 
 
