@@ -99,11 +99,20 @@ http://127.0.0.1:8050
 docker compose up --build
 ```
 Open:
-     http://localhost:8050
+     http://localhost:8050 (Dash demo)
+     http://localhost:8000 (FastAPI)
+     http://localhost:5173 (Web frontend)
 
 
 Tests:
     pytest -q
+
+## Architecture (monorepo)
+
+- Dash (`src/app.py`) stays as internal admin/demo UI.
+- FastAPI (`src/api/main.py`) exposes `/predict`, `/models`, `/explain`, `/comparables`, `/health`.
+- Frontend in `web/` (Vite + React) renders the product UI and calls the API.
+- Predictions history is stored in a DB when `DATABASE_URL` is configured (defaults to SQLite).
 
 
 ##  Project Structure

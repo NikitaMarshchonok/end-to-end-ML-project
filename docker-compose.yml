@@ -1,9 +1,51 @@
 services:
-  dash-app:
-    build: .
+  dash:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8050:8050"
     volumes:
       - ./models:/app/models
       - ./data:/app/data
       - ./pics:/app/pics
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      - CORS_ALLOW_ORIGINS=http://localhost:5173,http://localhost:8050
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./data/predictions.db}
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_USE_MOCK_DATA=false
+    depends_on:
+      - api
+
+  db:
+    profiles: ["db"]
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=predictions
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:
