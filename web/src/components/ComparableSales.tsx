@@ -24,7 +24,7 @@ const formatValue = (value: string | number, unit?: string) => {
 };
 
 const ComparableSales = ({ data }: ComparableSalesProps) => {
-  if (!data || data.items.length === 0) {
+  if (!data) {
     return null;
   }
 
@@ -36,14 +36,20 @@ const ComparableSales = ({ data }: ComparableSalesProps) => {
         </div>
         <div>
           <h3 className="font-semibold text-foreground">Comparable Sales</h3>
-          <p className="text-sm text-muted-foreground">Top similar properties</p>
+          <p className="text-sm text-muted-foreground">Top similar properties (lower score = closer)</p>
         </div>
       </div>
 
+      {data.items.length === 0 ? (
+        <div className="text-sm text-muted-foreground">
+          Not enough input data to find similar listings. Try filling more fields.
+        </div>
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Price</TableHead>
+            <TableHead>Similarity</TableHead>
             {data.fields.map((field) => (
               <TableHead key={field.key}>{field.label}</TableHead>
             ))}
@@ -55,6 +61,9 @@ const ComparableSales = ({ data }: ComparableSalesProps) => {
               <TableCell className="font-medium">
                 {formatCurrency(item.price, data.currency)}
               </TableCell>
+              <TableCell className="text-muted-foreground">
+                {item.distance.toFixed(2)}
+              </TableCell>
               {data.fields.map((field) => (
                 <TableCell key={`${item.price}-${field.key}-${idx}`}>
                   {formatValue(item.features[field.key], field.unit)}
@@ -64,6 +73,7 @@ const ComparableSales = ({ data }: ComparableSalesProps) => {
           ))}
         </TableBody>
       </Table>
+      )}
     </div>
   );
 };

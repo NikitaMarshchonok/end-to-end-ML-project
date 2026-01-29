@@ -242,7 +242,11 @@ export const generateMockExplain = (modelId: string, features: Record<string, st
   };
 };
 
-export const generateMockComparables = (modelId: string, features: Record<string, string | number>): ComparablesResponse => {
+export const generateMockComparables = (
+  modelId: string,
+  features: Record<string, string | number>,
+  topK = 5
+): ComparablesResponse => {
   const currency = modelId === 'taiwan' ? 'TWD' : 'ILS';
   const fields: ComparableField[] =
     modelId === 'taiwan'
@@ -259,7 +263,8 @@ export const generateMockComparables = (modelId: string, features: Record<string
           { key: 'constructionYear', label: 'Year' },
         ];
 
-  const items: ComparableItem[] = Array.from({ length: 5 }).map((_, idx) => ({
+  const count = Math.max(1, Math.min(topK, 10));
+  const items: ComparableItem[] = Array.from({ length: count }).map((_, idx) => ({
     price: modelId === 'taiwan' ? 30 + idx * 2 : 3000000 + idx * 150000,
     distance: 0.1 + idx * 0.05,
     features: {

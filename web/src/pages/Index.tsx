@@ -6,6 +6,13 @@ import PriceResultCard from '@/components/PriceResultCard';
 import ExplainabilitySection from '@/components/ExplainabilitySection';
 import RecentPredictions from '@/components/RecentPredictions';
 import ComparableSales from '@/components/ComparableSales';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import LoadingState from '@/components/LoadingState';
 import ErrorState from '@/components/ErrorState';
 import {
@@ -43,6 +50,9 @@ const Index = () => {
   const [currentPrediction, setCurrentPrediction] = useState<PredictionResponse | null>(null);
   const [currentExplain, setCurrentExplain] = useState<ExplainResponse | null>(null);
   const [currentComparables, setCurrentComparables] = useState<ComparablesResponse | null>(null);
+  const [comparablesCount, setComparablesCount] = useState('5');
+  const [lastFeatures, setLastFeatures] = useState<Record<string, string | number> | null>(null);
+  const [lastModelId, setLastModelId] = useState<string | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
   const [predictionError, setPredictionError] = useState<string | null>(null);
 
@@ -126,14 +136,15 @@ const Index = () => {
     try {
       let result: PredictionResponse;
       let explain: ExplainResponse;
-      let comparables;
+      let comparables: ComparablesResponse;
+      const topK = Number(comparablesCount) || 5;
 
       if (USE_MOCK_DATA) {
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 1200));
         result = generateMockPrediction(selectedModelId, features);
         explain = generateMockExplain(selectedModelId, features);
-        comparables = generateMockComparables(selectedModelId, features);
+        comparables = generateMockComparables(selectedModelId, features, topK);
       } else {
         result = await predictPrice({
           model_id: selectedModelId,
@@ -148,13 +159,15 @@ const Index = () => {
             model_id: selectedModelId,
             features,
           },
-          5
+          topK
         );
       }
 
       setCurrentPrediction(result);
       setCurrentExplain(explain);
       setCurrentComparables(comparables);
+      setLastFeatures(features);
+      setLastModelId(selectedModelId);
 
       // Add to recent predictions
       const newPrediction: RecentPrediction = {
@@ -189,7 +202,29 @@ const Index = () => {
     setCurrentExplain(null);
     setCurrentComparables(null);
     setPredictionError(null);
+    setLastFeatures(null);
+    setLastModelId(null);
   };
+
+  useEffect(() => {
+    if (!lastFeatures || !lastModelId || !currentPrediction) return;
+
+    const topK = Number(comparablesCount) || 5;
+    if (USE_MOCK_DATA) {
+      setCurrentComparables(generateMockComparables(lastModelId, lastFeatures, topK));
+      return;
+    }
+
+    fetchComparables(
+      {
+        model_id: lastModelId,
+        features: lastFeatures,
+      },
+      topK
+    )
+      .then(setCurrentComparables)
+      .catch(() => {});
+  }, [comparablesCount, lastFeatures, lastModelId, currentPrediction]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -236,14 +271,35 @@ const Index = () => {
 
           {/* Results section */}
           {currentPrediction && !predictionError && (
-            <div className="mt-8 grid gap-6 md:grid-cols-2">
-              <PriceResultCard prediction={currentPrediction} />
-              <ExplainabilitySection
-                factors={currentExplain?.factors || currentPrediction.factors}
-                ranges={currentExplain?.ranges}
-                currency={currentExplain?.currency || currentPrediction.currency}
-              />
-            </div>
+            <>
+              <div className="mt-8 grid gap-6 md:grid-cols-2">
+                <PriceResultCard prediction={currentPrediction} />
+                <ExplainabilitySection
+                  factors={currentExplain?.factors || currentPrediction.factors}
+                  ranges={currentExplain?.ranges}
+                  currency={currentExplain?.currency || currentPrediction.currency}
+                />
+              </div>
+
+              <div className="mt-6 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Comparable Sales</p>
+                  <p className="text-xs text-muted-foreground">Choose how many similar listings to show</p>
+                </div>
+                <div className="w-32">
+                  <Select value={comparablesCount} onValueChange={setComparablesCount}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Top K" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">Top 3</SelectItem>
+                      <SelectItem value="5">Top 5</SelectItem>
+                      <SelectItem value="10">Top 10</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
           )}
 
           {currentPrediction && currentComparables && !predictionError && (
