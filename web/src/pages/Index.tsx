@@ -6,6 +6,7 @@ import PriceResultCard from '@/components/PriceResultCard';
 import ExplainabilitySection from '@/components/ExplainabilitySection';
 import RecentPredictions from '@/components/RecentPredictions';
 import ComparableSales from '@/components/ComparableSales';
+import ModelHealth from '@/components/ModelHealth';
 import {
   Select,
   SelectContent,
@@ -20,16 +21,19 @@ import {
   PredictionResponse,
   ExplainResponse,
   ComparablesResponse,
+  MonitoringResponse,
   fetchModels,
   predictPrice,
   explainPrediction,
   fetchPredictions,
   clearPredictions,
   fetchComparables,
+  fetchMonitoring,
   mockModels,
   generateMockPrediction,
   generateMockExplain,
   generateMockComparables,
+  generateMockMonitoring,
 } from '@/services/api';
 
 interface RecentPrediction {
@@ -55,6 +59,7 @@ const Index = () => {
   const [lastModelId, setLastModelId] = useState<string | null>(null);
   const [isPredicting, setIsPredicting] = useState(false);
   const [predictionError, setPredictionError] = useState<string | null>(null);
+  const [modelHealth, setModelHealth] = useState<MonitoringResponse | null>(null);
 
   const [recentPredictions, setRecentPredictions] = useState<RecentPrediction[]>([]);
 
@@ -226,6 +231,17 @@ const Index = () => {
       .catch(() => {});
   }, [comparablesCount, lastFeatures, lastModelId, currentPrediction]);
 
+  useEffect(() => {
+    if (!selectedModelId) return;
+    if (USE_MOCK_DATA) {
+      setModelHealth(generateMockMonitoring(selectedModelId));
+      return;
+    }
+    fetchMonitoring(selectedModelId)
+      .then(setModelHealth)
+      .catch(() => setModelHealth(null));
+  }, [selectedModelId]);
+
   return (
     <div className="min-h-screen bg-background">
       <HeroSection />
@@ -314,6 +330,10 @@ const Index = () => {
               predictions={recentPredictions}
               onClear={handleClearHistory}
             />
+          </div>
+
+          <div className="mt-8">
+            <ModelHealth data={modelHealth} />
           </div>
         </div>
       </main>

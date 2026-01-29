@@ -81,6 +81,23 @@ export interface ComparablesResponse {
   items: ComparableItem[];
 }
 
+export interface DriftItem {
+  feature: string;
+  baseline_mean: number;
+  recent_mean: number;
+  baseline_std: number;
+  drift_score: number;
+  sample_size: number;
+}
+
+export interface MonitoringResponse {
+  model_id: string;
+  total_predictions: number;
+  sample_size: number;
+  drift: DriftItem[];
+  note?: string;
+}
+
 export interface Factor {
   name: string;
   impact: number; // -100 to 100
@@ -150,6 +167,14 @@ export const fetchComparables = async (request: PredictionRequest, topK = 5): Pr
   });
   if (!response.ok) {
     throw new Error('Failed to fetch comparables');
+  }
+  return response.json();
+};
+
+export const fetchMonitoring = async (modelId: string): Promise<MonitoringResponse> => {
+  const response = await fetch(`${API_BASE_URL}/monitoring?model_id=${modelId}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch monitoring data');
   }
   return response.json();
 };
@@ -281,4 +306,38 @@ export const generateMockComparables = (
   }));
 
   return { currency, fields, items };
+};
+
+export const generateMockMonitoring = (modelId: string): MonitoringResponse => {
+  return {
+    model_id: modelId,
+    total_predictions: 24,
+    sample_size: 24,
+    drift: [
+      {
+        feature: 'netArea',
+        baseline_mean: 85,
+        recent_mean: 96,
+        baseline_std: 32,
+        drift_score: 0.34,
+        sample_size: 24,
+      },
+      {
+        feature: 'rooms',
+        baseline_mean: 3.1,
+        recent_mean: 3.4,
+        baseline_std: 1.2,
+        drift_score: 0.25,
+        sample_size: 24,
+      },
+      {
+        feature: 'constructionYear',
+        baseline_mean: 1995,
+        recent_mean: 2002,
+        baseline_std: 18,
+        drift_score: 0.39,
+        sample_size: 24,
+      },
+    ],
+  };
 };

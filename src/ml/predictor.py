@@ -271,6 +271,9 @@ TAIWAN_COMPARABLE_FIELDS = [
     {"key": "long", "label": "Longitude"},
 ]
 
+TEL_AVIV_DRIFT_FEATURES = ["netArea", "rooms", "floor", "constructionYear"]
+TAIWAN_DRIFT_FEATURES = ["distance", "convenience", "lat", "long"]
+
 
 # =========================================================
 # Load models
@@ -910,3 +913,50 @@ def get_comparables(model_id: str, features: dict, top_k: int = 5):
         )
 
     return {"currency": currency, "fields": display_fields, "items": items}
+
+
+# =========================================================
+# Monitoring / drift
+# =========================================================
+def get_baseline_stats(model_id: str):
+    if model_id in ("tel_aviv_v1", "tel_aviv_v2", "tel_aviv_v3_2_clean"):
+        if not os.path.exists(TEL_AVIV_DATA_PATH):
+            return None
+        cols = TEL_AVIV_DRIFT_FEATURES
+        df = pd.read_csv(TEL_AVIV_DATA_PATH, usecols=[c for c in cols if c])
+        stats = {}
+        for col in cols:
+            vals = pd.to_numeric(df[col], errors="coerce").dropna()
+            if vals.empty:
+                continue
+            stats[col] = {
+                "mean": float(vals.mean()),
+                "std": float(vals.std() or 1.0),
+            }
+        return stats
+
+    if model_id == "taiwan":
+        if not os.path.exists(TAIWAN_DATA_PATH):
+            return None
+        df = pd.read_csv(TAIWAN_DATA_PATH)
+        rename = {
+            "Distance to the nearest MRT station": "distance",
+            "Number of convenience stores": "convenience",
+            "Latitude": "lat",
+            "Longitude": "long",
+        }
+        df = df.rename(columns=rename)
+        stats = {}
+        for col in TAIWAN_DRIFT_FEATURES:
+            if col not in df.columns:
+                continue
+            vals = pd.to_numeric(df[col], errors="coerce").dropna()
+            if vals.empty:
+                continue
+            stats[col] = {
+                "mean": float(vals.mean()),
+                "std": float(vals.std() or 1.0),
+            }
+        return stats
+
+    return None
