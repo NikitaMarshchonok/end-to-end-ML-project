@@ -8,9 +8,9 @@ interface ModelHealthProps {
 }
 
 const driftLabel = (score: number) => {
-  if (score >= 1.0) return { text: 'High', color: 'text-destructive' };
-  if (score >= 0.5) return { text: 'Medium', color: 'text-yellow-600' };
-  return { text: 'Low', color: 'text-success' };
+  if (score >= 1.0) return { text: 'High', color: 'text-destructive', bg: 'bg-destructive/10' };
+  if (score >= 0.5) return { text: 'Medium', color: 'text-yellow-600', bg: 'bg-yellow-500/10' };
+  return { text: 'Low', color: 'text-success', bg: 'bg-success/10' };
 };
 
 const ModelHealth = ({ data }: ModelHealthProps) => {
@@ -33,6 +33,9 @@ const ModelHealth = ({ data }: ModelHealthProps) => {
     );
   }
 
+  const highCount = data.drift.filter((d) => d.drift_score >= 1.0).length;
+  const mediumCount = data.drift.filter((d) => d.drift_score >= 0.5 && d.drift_score < 1.0).length;
+
   return (
     <div className="bg-card rounded-2xl shadow-card p-6 border border-border animate-fade-in">
       <div className="flex items-center justify-between mb-4">
@@ -48,6 +51,27 @@ const ModelHealth = ({ data }: ModelHealthProps) => {
         <div className="text-xs text-muted-foreground">
           Recent samples: {data.sample_size}
         </div>
+      </div>
+
+      <div
+        className={cn(
+          'mb-4 rounded-xl border px-4 py-3 text-sm',
+          highCount > 0 ? 'border-destructive/30 bg-destructive/5 text-destructive' : 'border-border bg-muted/30 text-muted-foreground'
+        )}
+      >
+        {highCount > 0 ? (
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            <span>
+              Drift alert: {highCount} feature{highCount > 1 ? 's' : ''} exceed the high threshold (≥ 1.0).
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-success" />
+            <span>No high drift detected for recent data.</span>
+          </div>
+        )}
       </div>
 
       {data.drift.length === 0 ? (
@@ -72,9 +96,11 @@ const ModelHealth = ({ data }: ModelHealthProps) => {
                   <TableCell>{item.baseline_mean.toFixed(2)}</TableCell>
                   <TableCell>{item.recent_mean.toFixed(2)}</TableCell>
                   <TableCell>{item.drift_score.toFixed(2)}</TableCell>
-                  <TableCell className={cn('font-medium', level.color)}>
+                <TableCell>
+                  <span className={cn('inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold', level.color, level.bg)}>
                     {level.text}
-                  </TableCell>
+                  </span>
+                </TableCell>
                 </TableRow>
               );
             })}
@@ -82,13 +108,10 @@ const ModelHealth = ({ data }: ModelHealthProps) => {
         </Table>
       )}
 
-      <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-        {data.drift.some((d) => d.drift_score >= 1.0) ? (
-          <AlertTriangle className="h-4 w-4 text-destructive" />
-        ) : (
-          <CheckCircle2 className="h-4 w-4 text-success" />
-        )}
+      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <span>Drift score = |recent_mean − baseline_mean| / baseline_std</span>
+        <span>Thresholds: Low &lt; 0.5, Medium 0.5–1.0, High ≥ 1.0</span>
+        <span>Medium: {mediumCount} • High: {highCount}</span>
       </div>
     </div>
   );
