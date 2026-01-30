@@ -28,6 +28,11 @@ class ComparablesRequest(BaseModel):
     top_k: int = Field(5, ge=1, le=10, description="Number of comparable items")
 
 
+class FeedbackRequest(BaseModel):
+    prediction_id: int = Field(..., description="Prediction record id")
+    actual_price: float = Field(..., gt=0, description="Observed real price")
+
+
 app = FastAPI(title="Real Estate ML API", version="1.0.0")
 
 allow_origins = os.environ.get("CORS_ALLOW_ORIGINS", "*")
@@ -75,6 +80,7 @@ def predict_price(payload: PredictionRequest, db: Session = Depends(get_session)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {e}") from e
 
+    prediction_id = None
     if DB_READY:
         try:
             record = Prediction(
@@ -90,6 +96,8 @@ def predict_price(payload: PredictionRequest, db: Session = Depends(get_session)
             )
             db.add(record)
             db.commit()
+            db.refresh(record)
+            prediction_id = record.id
         except SQLAlchemyError:
             db.rollback()
 
@@ -101,6 +109,7 @@ def predict_price(payload: PredictionRequest, db: Session = Depends(get_session)
         "model_version": result.model_version,
         "currency": result.currency,
         "factors": result.factors,
+        "prediction_id": prediction_id,
     }
 
 
@@ -130,6 +139,71 @@ def comparables(payload: ComparablesRequest):
         return get_comparables(payload.model_id, payload.features, top_k=payload.top_k)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Comparables error: {e}") from e
+
+
+@app.post("/feedback")
+def feedback(payload: FeedbackRequest, db: Session = Depends(get_session)):
+    if not DB_READY:
+        raise HTTPException(status_code=400, detail="Database is not configured.")
+
+    record = db.query(Prediction).filter(Prediction.id == payload.prediction_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Prediction not found.")
+
+    try:
+        actual = float(payload.actual_price)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Actual price must be numeric.") from e
+
+    abs_error = abs(record.price - actual)
+    pct_error = abs_error / actual if actual > 0 else None
+
+    record.actual_price = actual
+    record.abs_error = abs_error
+    record.pct_error = pct_error
+
+    try:
+        db.add(record)
+        db.commit()
+    except SQLAlchemyError as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"DB error: {e}") from e
+
+    return {
+        "prediction_id": record.id,
+        "actual_price": actual,
+        "abs_error": abs_error,
+        "pct_error": pct_error,
+    }
+
+
+@app.get("/metrics")
+def metrics(model_id: str | None = None, db: Session = Depends(get_session)):
+    if not DB_READY:
+        return {"count": 0, "mae": None, "mape": None, "rmse": None}
+
+    query = db.query(Prediction).filter(Prediction.actual_price.isnot(None))
+    if model_id:
+        query = query.filter(Prediction.model_id == model_id)
+
+    rows = query.all()
+    if not rows:
+        return {"count": 0, "mae": None, "mape": None, "rmse": None}
+
+    abs_errors = [r.abs_error for r in rows if r.abs_error is not None]
+    pct_errors = [r.pct_error for r in rows if r.pct_error is not None]
+    sq_errors = [r.abs_error ** 2 for r in rows if r.abs_error is not None]
+
+    mae = float(sum(abs_errors) / len(abs_errors)) if abs_errors else None
+    mape = float(sum(pct_errors) / len(pct_errors)) if pct_errors else None
+    rmse = float((sum(sq_errors) / len(sq_errors)) ** 0.5) if sq_errors else None
+
+    return {
+        "count": len(abs_errors),
+        "mae": mae,
+        "mape": mape,
+        "rmse": rmse,
+    }
 
 
 @app.get("/predictions")

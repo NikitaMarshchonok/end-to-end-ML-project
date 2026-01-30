@@ -19,3 +19,6 @@ class Prediction(Base):
     p90 = Column(Float, nullable=False)
     features = Column(JSON, nullable=False)
     factors = Column(JSON, nullable=False)
+    actual_price = Column(Float, nullable=True)
+    abs_error = Column(Float, nullable=True)
+    pct_error = Column(Float, nullable=True)

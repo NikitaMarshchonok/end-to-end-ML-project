@@ -1,10 +1,11 @@
-import { MonitoringResponse } from '@/services/api';
+import { MetricsResponse, MonitoringResponse } from '@/services/api';
 import { Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
 interface ModelHealthProps {
   data: MonitoringResponse | null;
+  metrics?: MetricsResponse | null;
 }
 
 const driftLabel = (score: number) => {
@@ -13,7 +14,17 @@ const driftLabel = (score: number) => {
   return { text: 'Low', color: 'text-success', bg: 'bg-success/10' };
 };
 
-const ModelHealth = ({ data }: ModelHealthProps) => {
+const formatNumber = (value: number | null, digits = 0) => {
+  if (value === null || value === undefined) return '—';
+  return value.toFixed(digits);
+};
+
+const formatPct = (value: number | null) => {
+  if (value === null || value === undefined) return '—';
+  return `${(value * 100).toFixed(1)}%`;
+};
+
+const ModelHealth = ({ data, metrics }: ModelHealthProps) => {
   if (!data) return null;
 
   if (data.note) {
@@ -107,6 +118,30 @@ const ModelHealth = ({ data }: ModelHealthProps) => {
           </TableBody>
         </Table>
       )}
+
+      <div className="mt-4 rounded-xl border border-border bg-muted/20 p-4 text-sm">
+        <div className="mb-2 font-medium text-foreground">Feedback metrics (real prices)</div>
+        {metrics && metrics.count > 0 ? (
+          <div className="grid grid-cols-3 gap-3 text-xs text-muted-foreground">
+            <div>
+              <div className="text-foreground font-semibold">MAE</div>
+              <div>{formatNumber(metrics.mae, 0)}</div>
+            </div>
+            <div>
+              <div className="text-foreground font-semibold">RMSE</div>
+              <div>{formatNumber(metrics.rmse, 0)}</div>
+            </div>
+            <div>
+              <div className="text-foreground font-semibold">MAPE</div>
+              <div>{formatPct(metrics.mape)}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-xs text-muted-foreground">
+            No feedback yet — add real prices to evaluate accuracy.
+          </div>
+        )}
+      </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <span>Drift score = |recent_mean − baseline_mean| / baseline_std</span>

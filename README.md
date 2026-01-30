@@ -110,9 +110,10 @@ Tests:
 ## Architecture (monorepo)
 
 - Dash (`src/app.py`) stays as internal admin/demo UI.
-- FastAPI (`src/api/main.py`) exposes `/predict`, `/models`, `/explain`, `/comparables`, `/monitoring`, `/health`.
+- FastAPI (`src/api/main.py`) exposes `/predict`, `/models`, `/explain`, `/comparables`, `/monitoring`, `/feedback`, `/metrics`, `/health`.
 - Frontend in `web/` (Vite + React) renders the product UI and calls the API.
 - Predictions history is stored in a DB when `DATABASE_URL` is configured (defaults to SQLite).
+- Feedback loop uses the same DB; if you use SQLite and already have `data/predictions.db`, delete it once to apply the new schema.
 
 
 ##  Project Structure

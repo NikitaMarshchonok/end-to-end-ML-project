@@ -1,9 +1,13 @@
+import { useState } from 'react';
 import { PredictionResponse } from '@/services/api';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { TrendingUp, Info } from 'lucide-react';
 
 interface PriceResultCardProps {
   prediction: PredictionResponse;
+  onSubmitFeedback?: (actualPrice: number) => Promise<{ abs_error: number; pct_error: number | null }>;
 }
 
 const formatCurrency = (value: number, currency: string) => {
@@ -14,7 +18,32 @@ const formatCurrency = (value: number, currency: string) => {
   }).format(value);
 };
 
-const PriceResultCard = ({ prediction }: PriceResultCardProps) => {
+const PriceResultCard = ({ prediction, onSubmitFeedback }: PriceResultCardProps) => {
+  const [actualPrice, setActualPrice] = useState('');
+  const [feedbackStatus, setFeedbackStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+
+  const handleSubmitFeedback = async () => {
+    if (!onSubmitFeedback) return;
+    const value = Number(actualPrice);
+    if (!value || value <= 0) {
+      setFeedbackStatus('error');
+      setFeedbackMessage('Please enter a valid actual price.');
+      return;
+    }
+    setFeedbackStatus('submitting');
+    setFeedbackMessage(null);
+    try {
+      const result = await onSubmitFeedback(value);
+      const pct = result.pct_error !== null ? `${(result.pct_error * 100).toFixed(1)}%` : '—';
+      setFeedbackStatus('success');
+      setFeedbackMessage(`Saved. Abs error: ${formatCurrency(result.abs_error, prediction.currency)} • MAPE: ${pct}`);
+    } catch (e) {
+      setFeedbackStatus('error');
+      setFeedbackMessage('Failed to save feedback. Please try again.');
+    }
+  };
+
   return (
     <div className="animate-scale-in">
       <div className="bg-card rounded-2xl shadow-card p-6 md:p-8 border border-border">
@@ -83,6 +112,45 @@ const PriceResultCard = ({ prediction }: PriceResultCardProps) => {
               style={{ left: '50%', transform: 'translateX(-50%)' }}
             />
           </div>
+        </div>
+
+        {/* Feedback loop */}
+        <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
+          <p className="text-sm font-medium text-foreground mb-2">Feedback (actual sale price)</p>
+          {prediction.prediction_id ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Input
+                type="number"
+                value={actualPrice}
+                onChange={(e) => setActualPrice(e.target.value)}
+                placeholder="Enter actual price"
+                className="sm:max-w-[220px]"
+              />
+              <Button
+                type="button"
+                onClick={handleSubmitFeedback}
+                disabled={!onSubmitFeedback || feedbackStatus === 'submitting'}
+                className="sm:w-auto"
+              >
+                {feedbackStatus === 'submitting' ? 'Saving...' : 'Save feedback'}
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Feedback is available when prediction history is enabled.
+            </p>
+          )}
+          {feedbackMessage && (
+            <p
+              className={
+                feedbackStatus === 'success'
+                  ? 'mt-2 text-xs text-success'
+                  : 'mt-2 text-xs text-destructive'
+              }
+            >
+              {feedbackMessage}
+            </p>
+          )}
         </div>
       </div>
     </div>

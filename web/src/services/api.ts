@@ -34,6 +34,7 @@ export interface PredictionResponse {
   model_version: string;
   currency: string;
   factors: Factor[];
+  prediction_id?: number | null;
 }
 
 export interface ExplainRange {
@@ -96,6 +97,20 @@ export interface MonitoringResponse {
   sample_size: number;
   drift: DriftItem[];
   note?: string;
+}
+
+export interface FeedbackResponse {
+  prediction_id: number;
+  actual_price: number;
+  abs_error: number;
+  pct_error: number | null;
+}
+
+export interface MetricsResponse {
+  count: number;
+  mae: number | null;
+  mape: number | null;
+  rmse: number | null;
 }
 
 export interface Factor {
@@ -179,6 +194,32 @@ export const fetchMonitoring = async (modelId: string): Promise<MonitoringRespon
   return response.json();
 };
 
+export const submitFeedback = async (predictionId: number, actualPrice: number): Promise<FeedbackResponse> => {
+  const response = await fetch(`${API_BASE_URL}/feedback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prediction_id: predictionId,
+      actual_price: actualPrice,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to submit feedback');
+  }
+  return response.json();
+};
+
+export const fetchMetrics = async (modelId?: string): Promise<MetricsResponse> => {
+  const url = modelId ? `${API_BASE_URL}/metrics?model_id=${modelId}` : `${API_BASE_URL}/metrics`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Failed to fetch metrics');
+  }
+  return response.json();
+};
+
 // Mock data for development/demo
 export const mockModels: Model[] = [
   {
@@ -243,6 +284,7 @@ export const generateMockPrediction = (modelId: string, features: Record<string,
       { name: 'Building age', impact: 15, direction: 'down' },
       { name: 'Market trend', impact: 35, direction: 'up' },
     ],
+    prediction_id: Math.floor(Math.random() * 10000) + 1,
   };
 };
 
@@ -339,5 +381,23 @@ export const generateMockMonitoring = (modelId: string): MonitoringResponse => {
         sample_size: 24,
       },
     ],
+  };
+};
+
+export const generateMockFeedback = (): FeedbackResponse => {
+  return {
+    prediction_id: Math.floor(Math.random() * 10000) + 1,
+    actual_price: 3200000,
+    abs_error: 180000,
+    pct_error: 0.056,
+  };
+};
+
+export const generateMockMetrics = (): MetricsResponse => {
+  return {
+    count: 12,
+    mae: 210000,
+    mape: 0.07,
+    rmse: 320000,
   };
 };

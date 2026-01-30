@@ -22,6 +22,7 @@ import {
   ExplainResponse,
   ComparablesResponse,
   MonitoringResponse,
+  MetricsResponse,
   fetchModels,
   predictPrice,
   explainPrediction,
@@ -29,11 +30,15 @@ import {
   clearPredictions,
   fetchComparables,
   fetchMonitoring,
+  fetchMetrics,
+  submitFeedback,
   mockModels,
   generateMockPrediction,
   generateMockExplain,
   generateMockComparables,
   generateMockMonitoring,
+  generateMockFeedback,
+  generateMockMetrics,
 } from '@/services/api';
 
 interface RecentPrediction {
@@ -60,6 +65,7 @@ const Index = () => {
   const [isPredicting, setIsPredicting] = useState(false);
   const [predictionError, setPredictionError] = useState<string | null>(null);
   const [modelHealth, setModelHealth] = useState<MonitoringResponse | null>(null);
+  const [modelMetrics, setModelMetrics] = useState<MetricsResponse | null>(null);
 
   const [recentPredictions, setRecentPredictions] = useState<RecentPrediction[]>([]);
 
@@ -235,12 +241,34 @@ const Index = () => {
     if (!selectedModelId) return;
     if (USE_MOCK_DATA) {
       setModelHealth(generateMockMonitoring(selectedModelId));
+      setModelMetrics(generateMockMetrics());
       return;
     }
     fetchMonitoring(selectedModelId)
       .then(setModelHealth)
       .catch(() => setModelHealth(null));
+    fetchMetrics(selectedModelId)
+      .then(setModelMetrics)
+      .catch(() => setModelMetrics(null));
   }, [selectedModelId]);
+
+  const handleSubmitFeedback = async (actualPrice: number) => {
+    if (!currentPrediction?.prediction_id) {
+      throw new Error('Missing prediction id');
+    }
+
+    if (USE_MOCK_DATA) {
+      const feedback = generateMockFeedback();
+      setModelMetrics(generateMockMetrics());
+      return feedback;
+    }
+
+    const feedback = await submitFeedback(currentPrediction.prediction_id, actualPrice);
+    fetchMetrics(selectedModelId || undefined)
+      .then(setModelMetrics)
+      .catch(() => {});
+    return feedback;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -289,7 +317,10 @@ const Index = () => {
           {currentPrediction && !predictionError && (
             <>
               <div className="mt-8 grid gap-6 md:grid-cols-2">
-                <PriceResultCard prediction={currentPrediction} />
+                <PriceResultCard
+                  prediction={currentPrediction}
+                  onSubmitFeedback={handleSubmitFeedback}
+                />
                 <ExplainabilitySection
                   factors={currentExplain?.factors || currentPrediction.factors}
                   ranges={currentExplain?.ranges}
@@ -333,7 +364,7 @@ const Index = () => {
           </div>
 
           <div className="mt-8">
-            <ModelHealth data={modelHealth} />
+            <ModelHealth data={modelHealth} metrics={modelMetrics} />
           </div>
         </div>
       </main>
