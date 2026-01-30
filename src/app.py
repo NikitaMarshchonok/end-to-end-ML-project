@@ -732,7 +732,8 @@ def predict_price(
     }
 
     try:
-        result = predict(model_choice, features)
+        market_id = "tw-tpe" if model_choice == "taiwan" else "il-tlv"
+        result = predict(model_choice, features, market_id)
     except ValueError as e:
         return "", str(e)
     except Exception as e:

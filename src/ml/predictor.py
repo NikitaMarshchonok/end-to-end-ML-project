@@ -22,6 +22,14 @@ class ModelSpec:
 
 
 @dataclass(frozen=True)
+class MarketSpec:
+    id: str
+    name: str
+    currency: str
+    models: dict[str, ModelSpec]
+
+
+@dataclass(frozen=True)
 class PredictionResult:
     price: float
     p10: float
@@ -347,7 +355,26 @@ def _load_models() -> dict[str, ModelSpec]:
     return models
 
 
-MODEL_REGISTRY = _load_models()
+_ALL_MODELS = _load_models()
+
+MARKET_REGISTRY: dict[str, MarketSpec] = {
+    "il-tlv": MarketSpec(
+        id="il-tlv",
+        name="Israel • Tel Aviv",
+        currency="ILS",
+        models={
+            k: v
+            for k, v in _ALL_MODELS.items()
+            if k in ("tel_aviv_v1", "tel_aviv_v2", "tel_aviv_v3_2_clean")
+        },
+    ),
+    "tw-tpe": MarketSpec(
+        id="tw-tpe",
+        name="Taiwan • Taipei",
+        currency="TWD",
+        models={k: v for k, v in _ALL_MODELS.items() if k in ("taiwan",)},
+    ),
+}
 
 
 # =========================================================
@@ -554,8 +581,8 @@ def get_feature_importances(model_obj):
     return None
 
 
-def build_local_factors(model_id: str, base_features: dict, base_price: float):
-    spec = MODEL_REGISTRY.get(model_id)
+def build_local_factors(model_id: str, base_features: dict, base_price: float, market_id: str | None = None):
+    spec = get_model_spec(model_id, market_id)
     if spec is None or spec.model is None:
         return []
 
@@ -600,7 +627,7 @@ def build_local_factors(model_id: str, base_features: dict, base_price: float):
             continue
 
         try:
-            bumped_price = _predict_price_raw(model_id, bumped)
+            bumped_price = _predict_price_raw(model_id, bumped, market_id)
         except Exception:
             continue
 
@@ -621,37 +648,61 @@ def build_local_factors(model_id: str, base_features: dict, base_price: float):
 # =========================================================
 # Public API
 # =========================================================
-def list_models():
+def list_markets():
+    return [
+        {"id": m.id, "name": m.name, "currency": m.currency}
+        for m in MARKET_REGISTRY.values()
+    ]
+
+
+def list_models(market_id: str | None = None):
     out = []
-    for spec in MODEL_REGISTRY.values():
-        if spec.model is None:
+    markets = MARKET_REGISTRY
+    if market_id:
+        markets = {market_id: MARKET_REGISTRY.get(market_id)} if MARKET_REGISTRY.get(market_id) else {}
+
+    for mkt_id, market in markets.items():
+        if not market:
             continue
+        for spec in market.models.values():
+            if spec.model is None:
+                continue
 
-        if spec.id in ("tel_aviv_v2", "tel_aviv_v3_2_clean"):
-            features = TEL_AVIV_REQUIRED_FEATURES + TEL_AVIV_OPTIONAL_FEATURES
-        elif spec.id == "tel_aviv_v1":
-            features = TEL_AVIV_REQUIRED_FEATURES
-        else:
-            features = TAIWAN_FEATURES
+            if spec.id in ("tel_aviv_v2", "tel_aviv_v3_2_clean"):
+                features = TEL_AVIV_REQUIRED_FEATURES + TEL_AVIV_OPTIONAL_FEATURES
+            elif spec.id == "tel_aviv_v1":
+                features = TEL_AVIV_REQUIRED_FEATURES
+            else:
+                features = TAIWAN_FEATURES
 
-        out.append(
-            {
-                "id": spec.id,
-                "name": spec.name,
-                "version": spec.version,
-                "currency": spec.currency,
-                "features": features,
-            }
-        )
+            out.append(
+                {
+                    "id": spec.id,
+                    "name": spec.name,
+                    "version": spec.version,
+                    "currency": spec.currency,
+                    "features": features,
+                    "market_id": mkt_id,
+                }
+            )
     return out
 
 
-def get_model_spec(model_id: str) -> ModelSpec | None:
-    return MODEL_REGISTRY.get(model_id)
+def get_model_spec(model_id: str, market_id: str | None = None) -> ModelSpec | None:
+    if market_id and market_id in MARKET_REGISTRY:
+        return MARKET_REGISTRY[market_id].models.get(model_id)
+    return _ALL_MODELS.get(model_id)
 
 
-def _predict_price_raw(model_id: str, features: dict) -> float:
-    spec = MODEL_REGISTRY.get(model_id)
+def get_market_id_for_model(model_id: str) -> str | None:
+    for market_id, market in MARKET_REGISTRY.items():
+        if model_id in market.models:
+            return market_id
+    return None
+
+
+def _predict_price_raw(model_id: str, features: dict, market_id: str | None = None) -> float:
+    spec = get_model_spec(model_id, market_id)
     if spec is None or spec.model is None:
         raise ValueError("Model not available.")
 
@@ -722,12 +773,12 @@ def _predict_price_raw(model_id: str, features: dict) -> float:
     raise ValueError("Unsupported model.")
 
 
-def predict(model_id: str, features: dict) -> PredictionResult:
-    spec = MODEL_REGISTRY.get(model_id)
+def predict(model_id: str, features: dict, market_id: str | None = None) -> PredictionResult:
+    spec = get_model_spec(model_id, market_id)
     if spec is None or spec.model is None:
         raise ValueError("Model not available.")
 
-    price = _predict_price_raw(model_id, features)
+    price = _predict_price_raw(model_id, features, market_id)
     p10 = p50 = p90 = price
 
     if model_id in ("tel_aviv_v2", "tel_aviv_v3_2_clean"):
@@ -770,7 +821,7 @@ def predict(model_id: str, features: dict) -> PredictionResult:
             p50 = price
 
     ranges = estimate_price_ranges(spec.metrics, price, model_id)
-    factors = build_local_factors(model_id, features, price)
+    factors = build_local_factors(model_id, features, price, market_id)
 
     return PredictionResult(
         price=price,
@@ -855,12 +906,14 @@ TEL_AVIV_COMPARABLES_INDEX = _load_tel_aviv_comparables()
 TAIWAN_COMPARABLES_INDEX = _load_taiwan_comparables()
 
 
-def get_comparables(model_id: str, features: dict, top_k: int = 5):
-    if model_id in ("tel_aviv_v1", "tel_aviv_v2", "tel_aviv_v3_2_clean"):
+def get_comparables(model_id: str, features: dict, top_k: int = 5, market_id: str | None = None):
+    market_id = market_id or get_market_id_for_model(model_id)
+
+    if market_id == "il-tlv":
         index = TEL_AVIV_COMPARABLES_INDEX
         display_fields = TEL_AVIV_COMPARABLE_FIELDS
         currency = "ILS"
-    elif model_id == "taiwan":
+    elif market_id == "tw-tpe":
         index = TAIWAN_COMPARABLES_INDEX
         display_fields = TAIWAN_COMPARABLE_FIELDS
         currency = "TWD"
@@ -918,8 +971,10 @@ def get_comparables(model_id: str, features: dict, top_k: int = 5):
 # =========================================================
 # Monitoring / drift
 # =========================================================
-def get_baseline_stats(model_id: str):
-    if model_id in ("tel_aviv_v1", "tel_aviv_v2", "tel_aviv_v3_2_clean"):
+def get_baseline_stats(model_id: str, market_id: str | None = None):
+    market_id = market_id or get_market_id_for_model(model_id)
+
+    if market_id == "il-tlv":
         if not os.path.exists(TEL_AVIV_DATA_PATH):
             return None
         cols = TEL_AVIV_DRIFT_FEATURES
@@ -935,7 +990,7 @@ def get_baseline_stats(model_id: str):
             }
         return stats
 
-    if model_id == "taiwan":
+    if market_id == "tw-tpe":
         if not os.path.exists(TAIWAN_DATA_PATH):
             return None
         df = pd.read_csv(TAIWAN_DATA_PATH)

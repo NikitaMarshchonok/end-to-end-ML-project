@@ -10,6 +10,7 @@ class Prediction(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    market_id = Column(String, nullable=False, default="il-tlv")
     model_id = Column(String, nullable=False)
     model_version = Column(String, nullable=False)
     currency = Column(String, nullable=False)

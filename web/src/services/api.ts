@@ -6,6 +6,13 @@ export interface Model {
   version: string;
   features: Feature[];
   currency: string;
+  market_id: string;
+}
+
+export interface Market {
+  id: string;
+  name: string;
+  currency: string;
 }
 
 export interface Feature {
@@ -22,6 +29,7 @@ export interface Feature {
 }
 
 export interface PredictionRequest {
+  market_id: string;
   model_id: string;
   features: Record<string, string | number>;
 }
@@ -53,6 +61,7 @@ export interface ExplainResponse {
 export interface PredictionHistoryItem {
   id: number;
   created_at: string;
+  market_id: string;
   model_id: string;
   model_version: string;
   currency: string;
@@ -119,10 +128,19 @@ export interface Factor {
   direction: 'up' | 'down';
 }
 
-export const fetchModels = async (): Promise<Model[]> => {
-  const response = await fetch(`${API_BASE_URL}/models`);
+export const fetchModels = async (marketId?: string): Promise<Model[]> => {
+  const url = marketId ? `${API_BASE_URL}/models?market_id=${marketId}` : `${API_BASE_URL}/models`;
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Failed to fetch models');
+  }
+  return response.json();
+};
+
+export const fetchMarkets = async (): Promise<Market[]> => {
+  const response = await fetch(`${API_BASE_URL}/markets`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch markets');
   }
   return response.json();
 };
@@ -186,8 +204,11 @@ export const fetchComparables = async (request: PredictionRequest, topK = 5): Pr
   return response.json();
 };
 
-export const fetchMonitoring = async (modelId: string): Promise<MonitoringResponse> => {
-  const response = await fetch(`${API_BASE_URL}/monitoring?model_id=${modelId}`);
+export const fetchMonitoring = async (modelId: string, marketId?: string): Promise<MonitoringResponse> => {
+  const url = marketId
+    ? `${API_BASE_URL}/monitoring?model_id=${modelId}&market_id=${marketId}`
+    : `${API_BASE_URL}/monitoring?model_id=${modelId}`;
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Failed to fetch monitoring data');
   }
@@ -211,8 +232,11 @@ export const submitFeedback = async (predictionId: number, actualPrice: number):
   return response.json();
 };
 
-export const fetchMetrics = async (modelId?: string): Promise<MetricsResponse> => {
-  const url = modelId ? `${API_BASE_URL}/metrics?model_id=${modelId}` : `${API_BASE_URL}/metrics`;
+export const fetchMetrics = async (modelId?: string, marketId?: string): Promise<MetricsResponse> => {
+  const params: string[] = [];
+  if (modelId) params.push(`model_id=${modelId}`);
+  if (marketId) params.push(`market_id=${marketId}`);
+  const url = params.length > 0 ? `${API_BASE_URL}/metrics?${params.join('&')}` : `${API_BASE_URL}/metrics`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Failed to fetch metrics');
@@ -221,12 +245,18 @@ export const fetchMetrics = async (modelId?: string): Promise<MetricsResponse> =
 };
 
 // Mock data for development/demo
+export const mockMarkets: Market[] = [
+  { id: 'il-tlv', name: 'Israel • Tel Aviv', currency: 'ILS' },
+  { id: 'tw-tpe', name: 'Taiwan • Taipei', currency: 'TWD' },
+];
+
 export const mockModels: Model[] = [
   {
     id: 'tel_aviv_v3_2_clean',
     name: 'Tel Aviv model v3.2_clean (best)',
     version: '3.2',
     currency: 'ILS',
+    market_id: 'il-tlv',
     features: [
       { name: 'netArea', type: 'number', label: 'Net area', min: 10, max: 1000, step: 1, unit: 'm²', placeholder: '80', required: true },
       { name: 'rooms', type: 'number', label: 'Rooms', min: 1, max: 12, step: 0.5, placeholder: '3', required: true },
@@ -246,6 +276,7 @@ export const mockModels: Model[] = [
     name: 'Taiwan tutorial model',
     version: '1.0',
     currency: 'TWD',
+    market_id: 'tw-tpe',
     features: [
       { name: 'distance', type: 'number', label: 'Distance to MRT', min: 0, max: 20000, step: 50, unit: 'm', placeholder: '400', required: true },
       { name: 'convenience', type: 'number', label: 'Convenience stores', min: 0, max: 20, step: 1, placeholder: '4', required: true },

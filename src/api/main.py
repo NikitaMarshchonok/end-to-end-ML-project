@@ -9,20 +9,23 @@ from sqlalchemy.orm import Session
 
 from .db import get_session, init_db
 from .models import Prediction
-from ..ml.predictor import get_baseline_stats, get_comparables, list_models, predict
+from ..ml.predictor import get_baseline_stats, get_comparables, list_markets, list_models, predict
 
 
 class PredictionRequest(BaseModel):
+    market_id: str = Field(..., description="Market identifier")
     model_id: str = Field(..., description="Model identifier")
     features: dict[str, Any] = Field(..., description="Feature values")
 
 
 class ExplainRequest(BaseModel):
+    market_id: str = Field(..., description="Market identifier")
     model_id: str = Field(..., description="Model identifier")
     features: dict[str, Any] = Field(..., description="Feature values")
 
 
 class ComparablesRequest(BaseModel):
+    market_id: str = Field(..., description="Market identifier")
     model_id: str = Field(..., description="Model identifier")
     features: dict[str, Any] = Field(..., description="Feature values")
     top_k: int = Field(5, ge=1, le=10, description="Number of comparable items")
@@ -67,14 +70,19 @@ def health():
 
 
 @app.get("/models")
-def get_models():
-    return list_models()
+def get_models(market_id: str | None = None):
+    return list_models(market_id)
+
+
+@app.get("/markets")
+def get_markets():
+    return list_markets()
 
 
 @app.post("/predict")
 def predict_price(payload: PredictionRequest, db: Session = Depends(get_session)):
     try:
-        result = predict(payload.model_id, payload.features)
+        result = predict(payload.model_id, payload.features, payload.market_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -84,6 +92,7 @@ def predict_price(payload: PredictionRequest, db: Session = Depends(get_session)
     if DB_READY:
         try:
             record = Prediction(
+                market_id=payload.market_id,
                 model_id=payload.model_id,
                 model_version=result.model_version,
                 currency=result.currency,
@@ -116,7 +125,7 @@ def predict_price(payload: PredictionRequest, db: Session = Depends(get_session)
 @app.post("/explain")
 def explain(payload: ExplainRequest):
     try:
-        result = predict(payload.model_id, payload.features)
+        result = predict(payload.model_id, payload.features, payload.market_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
@@ -136,7 +145,12 @@ def explain(payload: ExplainRequest):
 @app.post("/comparables")
 def comparables(payload: ComparablesRequest):
     try:
-        return get_comparables(payload.model_id, payload.features, top_k=payload.top_k)
+        return get_comparables(
+            payload.model_id,
+            payload.features,
+            top_k=payload.top_k,
+            market_id=payload.market_id,
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Comparables error: {e}") from e
 
@@ -178,13 +192,15 @@ def feedback(payload: FeedbackRequest, db: Session = Depends(get_session)):
 
 
 @app.get("/metrics")
-def metrics(model_id: str | None = None, db: Session = Depends(get_session)):
+def metrics(model_id: str | None = None, market_id: str | None = None, db: Session = Depends(get_session)):
     if not DB_READY:
         return {"count": 0, "mae": None, "mape": None, "rmse": None}
 
     query = db.query(Prediction).filter(Prediction.actual_price.isnot(None))
     if model_id:
         query = query.filter(Prediction.model_id == model_id)
+    if market_id:
+        query = query.filter(Prediction.market_id == market_id)
 
     rows = query.all()
     if not rows:
@@ -221,6 +237,7 @@ def list_predictions(limit: int = 10, db: Session = Depends(get_session)):
         {
             "id": row.id,
             "created_at": row.created_at.isoformat(),
+            "market_id": row.market_id,
             "model_id": row.model_id,
             "model_version": row.model_version,
             "currency": row.currency,
@@ -250,7 +267,7 @@ def clear_predictions(db: Session = Depends(get_session)):
 
 
 @app.get("/monitoring")
-def monitoring(model_id: str, limit: int = 500, db: Session = Depends(get_session)):
+def monitoring(model_id: str, market_id: str | None = None, limit: int = 500, db: Session = Depends(get_session)):
     if not DB_READY:
         return {
             "model_id": model_id,
@@ -260,10 +277,12 @@ def monitoring(model_id: str, limit: int = 500, db: Session = Depends(get_sessio
             "note": "Database is not configured.",
         }
 
+    query = db.query(Prediction).filter(Prediction.model_id == model_id)
+    if market_id:
+        query = query.filter(Prediction.market_id == market_id)
+
     rows = (
-        db.query(Prediction)
-        .filter(Prediction.model_id == model_id)
-        .order_by(Prediction.created_at.desc())
+        query.order_by(Prediction.created_at.desc())
         .limit(min(limit, 2000))
         .all()
     )
@@ -276,7 +295,7 @@ def monitoring(model_id: str, limit: int = 500, db: Session = Depends(get_sessio
             "note": "No prediction history yet.",
         }
 
-    baseline = get_baseline_stats(model_id) or {}
+    baseline = get_baseline_stats(model_id, market_id=market_id) or {}
     if not baseline:
         return {
             "model_id": model_id,

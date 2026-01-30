@@ -18,12 +18,14 @@ import LoadingState from '@/components/LoadingState';
 import ErrorState from '@/components/ErrorState';
 import {
   Model,
+  Market,
   PredictionResponse,
   ExplainResponse,
   ComparablesResponse,
   MonitoringResponse,
   MetricsResponse,
   fetchModels,
+  fetchMarkets,
   predictPrice,
   explainPrediction,
   fetchPredictions,
@@ -32,6 +34,7 @@ import {
   fetchMonitoring,
   fetchMetrics,
   submitFeedback,
+  mockMarkets,
   mockModels,
   generateMockPrediction,
   generateMockExplain,
@@ -52,6 +55,8 @@ const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true';
 
 const Index = () => {
   const [models, setModels] = useState<Model[]>([]);
+  const [markets, setMarkets] = useState<Market[]>([]);
+  const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [modelsError, setModelsError] = useState<string | null>(null);
@@ -72,16 +77,38 @@ const Index = () => {
   const selectedModel = models.find(m => m.id === selectedModelId);
 
   useEffect(() => {
-    loadModels();
+    loadMarkets();
   }, []);
 
   useEffect(() => {
     if (models.length > 0) {
       loadHistory();
     }
-  }, [models]);
+  }, [models, selectedMarketId]);
 
-  const loadModels = async () => {
+  useEffect(() => {
+    if (selectedMarketId) {
+      loadModels(selectedMarketId);
+    }
+  }, [selectedMarketId]);
+
+  const loadMarkets = async () => {
+    try {
+      if (USE_MOCK_DATA) {
+        setMarkets(mockMarkets);
+        setSelectedMarketId(mockMarkets[0]?.id || null);
+      } else {
+        const data = await fetchMarkets();
+        setMarkets(data);
+        setSelectedMarketId(data[0]?.id || null);
+      }
+    } catch {
+      setMarkets([]);
+      setSelectedMarketId(null);
+    }
+  };
+
+  const loadModels = async (marketId?: string | null) => {
     setIsLoadingModels(true);
     setModelsError(null);
 
@@ -89,12 +116,13 @@ const Index = () => {
       if (USE_MOCK_DATA) {
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 500));
-        setModels(mockModels);
-        if (mockModels.length > 0) {
-          setSelectedModelId(mockModels[0].id);
+        const filtered = marketId ? mockModels.filter(m => m.market_id === marketId) : mockModels;
+        setModels(filtered);
+        if (filtered.length > 0) {
+          setSelectedModelId(filtered[0].id);
         }
       } else {
-        const data = await fetchModels();
+        const data = await fetchModels(marketId || undefined);
         setModels(data);
         if (data.length > 0) {
           setSelectedModelId(data[0].id);
@@ -113,7 +141,10 @@ const Index = () => {
         return;
       }
       const items = await fetchPredictions(10);
-      const mapped: RecentPrediction[] = items.map((item) => {
+      const filtered = selectedMarketId
+        ? items.filter(item => item.market_id === selectedMarketId)
+        : items;
+      const mapped: RecentPrediction[] = filtered.map((item) => {
         const modelName = models.find(m => m.id === item.model_id)?.name || item.model_id;
         return {
           id: String(item.id),
@@ -137,7 +168,7 @@ const Index = () => {
   };
 
   const handlePredict = async (features: Record<string, string | number>) => {
-    if (!selectedModelId || !selectedModel) return;
+    if (!selectedModelId || !selectedModel || !selectedMarketId) return;
 
     setIsPredicting(true);
     setPredictionError(null);
@@ -158,15 +189,18 @@ const Index = () => {
         comparables = generateMockComparables(selectedModelId, features, topK);
       } else {
         result = await predictPrice({
+          market_id: selectedMarketId,
           model_id: selectedModelId,
           features,
         });
         explain = await explainPrediction({
+          market_id: selectedMarketId,
           model_id: selectedModelId,
           features,
         });
         comparables = await fetchComparables(
           {
+            market_id: selectedMarketId,
             model_id: selectedModelId,
             features,
           },
@@ -217,8 +251,23 @@ const Index = () => {
     setLastModelId(null);
   };
 
+  const handleMarketSelect = (marketId: string) => {
+    setSelectedMarketId(marketId);
+    setSelectedModelId(null);
+    setModels([]);
+    setCurrentPrediction(null);
+    setCurrentExplain(null);
+    setCurrentComparables(null);
+    setPredictionError(null);
+    setLastFeatures(null);
+    setLastModelId(null);
+    setRecentPredictions([]);
+    setModelHealth(null);
+    setModelMetrics(null);
+  };
+
   useEffect(() => {
-    if (!lastFeatures || !lastModelId || !currentPrediction) return;
+    if (!lastFeatures || !lastModelId || !currentPrediction || !selectedMarketId) return;
 
     const topK = Number(comparablesCount) || 5;
     if (USE_MOCK_DATA) {
@@ -228,6 +277,7 @@ const Index = () => {
 
     fetchComparables(
       {
+        market_id: selectedMarketId,
         model_id: lastModelId,
         features: lastFeatures,
       },
@@ -235,22 +285,22 @@ const Index = () => {
     )
       .then(setCurrentComparables)
       .catch(() => {});
-  }, [comparablesCount, lastFeatures, lastModelId, currentPrediction]);
+  }, [comparablesCount, lastFeatures, lastModelId, currentPrediction, selectedMarketId]);
 
   useEffect(() => {
-    if (!selectedModelId) return;
+    if (!selectedModelId || !selectedMarketId) return;
     if (USE_MOCK_DATA) {
       setModelHealth(generateMockMonitoring(selectedModelId));
       setModelMetrics(generateMockMetrics());
       return;
     }
-    fetchMonitoring(selectedModelId)
+    fetchMonitoring(selectedModelId, selectedMarketId)
       .then(setModelHealth)
       .catch(() => setModelHealth(null));
-    fetchMetrics(selectedModelId)
+    fetchMetrics(selectedModelId, selectedMarketId)
       .then(setModelMetrics)
       .catch(() => setModelMetrics(null));
-  }, [selectedModelId]);
+  }, [selectedModelId, selectedMarketId]);
 
   const handleSubmitFeedback = async (actualPrice: number) => {
     if (!currentPrediction?.prediction_id) {
@@ -264,7 +314,7 @@ const Index = () => {
     }
 
     const feedback = await submitFeedback(currentPrediction.prediction_id, actualPrice);
-    fetchMetrics(selectedModelId || undefined)
+    fetchMetrics(selectedModelId || undefined, selectedMarketId || undefined)
       .then(setModelMetrics)
       .catch(() => {});
     return feedback;
@@ -284,6 +334,32 @@ const Index = () => {
               <ErrorState message={modelsError} onRetry={loadModels} />
             ) : (
               <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Market
+                  </label>
+                  <Select
+                    value={selectedMarketId || ''}
+                    onValueChange={handleMarketSelect}
+                    disabled={markets.length === 0}
+                  >
+                    <SelectTrigger className="w-full h-12 bg-background border-border hover:border-primary/50 transition-colors">
+                      <SelectValue placeholder="Choose a market..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {markets.map((market) => (
+                        <SelectItem key={market.id} value={market.id} className="py-3">
+                          <div className="flex flex-col items-start">
+                            <span className="font-medium">{market.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              Currency: {market.currency}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <ModelSelector
                   models={models}
                   selectedModelId={selectedModelId}
