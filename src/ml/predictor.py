@@ -91,6 +91,8 @@ TEL_AVIV_V3_2_METRICS_PATH = os.path.join(
     MODELS_DIR, "tel_aviv_metrics_v3_2_clean_cli.json"
 )
 
+MARKETS_DIR = os.path.join(MODELS_DIR, "markets")
+
 
 # =========================================================
 # Feature schemas (for API / UI)
@@ -235,6 +237,84 @@ TEL_AVIV_OPTIONAL_FEATURES = [
     },
 ]
 
+US_REQUIRED_FEATURES = [
+    {
+        "name": "area_m2",
+        "type": "number",
+        "label": "Living area",
+        "min": 10,
+        "max": 2000,
+        "step": 1,
+        "unit": "m²",
+        "placeholder": "120",
+        "required": True,
+    },
+]
+
+US_OPTIONAL_FEATURES = [
+    {
+        "name": "gross_area_m2",
+        "type": "number",
+        "label": "Gross area",
+        "min": 10,
+        "max": 3000,
+        "step": 1,
+        "unit": "m²",
+        "placeholder": "140",
+        "required": False,
+    },
+    {
+        "name": "rooms",
+        "type": "number",
+        "label": "Rooms",
+        "min": 0,
+        "max": 20,
+        "step": 1,
+        "placeholder": "3",
+        "required": False,
+    },
+    {
+        "name": "floors",
+        "type": "number",
+        "label": "Floors",
+        "min": 1,
+        "max": 200,
+        "step": 1,
+        "placeholder": "10",
+        "required": False,
+    },
+    {
+        "name": "construction_year",
+        "type": "number",
+        "label": "Construction year",
+        "min": 1800,
+        "max": 2100,
+        "step": 1,
+        "placeholder": "2000",
+        "required": False,
+    },
+    {
+        "name": "lat",
+        "type": "number",
+        "label": "Latitude",
+        "min": -90,
+        "max": 90,
+        "step": 0.0001,
+        "placeholder": "40.71",
+        "required": False,
+    },
+    {
+        "name": "long",
+        "type": "number",
+        "label": "Longitude",
+        "min": -180,
+        "max": 180,
+        "step": 0.0001,
+        "placeholder": "-74.00",
+        "required": False,
+    },
+]
+
 TAIWAN_FEATURES = [
     {
         "name": "distance",
@@ -372,6 +452,31 @@ def _load_models() -> dict[str, ModelSpec]:
                 metrics=safe_load_json(TEL_AVIV_V3_2_METRICS_PATH),
             )
 
+    # Market models (NYC/Miami) trained from standardized contract
+    def _load_market_model(market_id: str, model_id: str, name: str):
+        base = os.path.join(MARKETS_DIR, market_id)
+        model_path = os.path.join(base, f"{model_id}.pkl")
+        feat_path = os.path.join(base, f"{model_id}_features.json")
+        metrics_path = os.path.join(base, f"{model_id}_metrics.json")
+        if not os.path.exists(model_path):
+            return
+        model_obj = _safe_joblib_load(model_path)
+        if model_obj is None:
+            return
+        models[model_id] = ModelSpec(
+            id=model_id,
+            name=name,
+            version="1.0",
+            currency="USD",
+            model=model_obj,
+            feature_cols=safe_load_json(feat_path),
+            log1p_target=False,
+            metrics=safe_load_json(metrics_path),
+        )
+
+    _load_market_model("us-nyc", "us_nyc_v1", "NYC model v1 (baseline)")
+    _load_market_model("us-mia", "us_mia_v1", "Miami model v1 (baseline)")
+
     return models
 
 
@@ -393,6 +498,18 @@ MARKET_REGISTRY: dict[str, MarketSpec] = {
         name="Taiwan • Taipei",
         currency="TWD",
         models={k: v for k, v in _ALL_MODELS.items() if k in ("taiwan",)},
+    ),
+    "us-nyc": MarketSpec(
+        id="us-nyc",
+        name="United States • New York",
+        currency="USD",
+        models={k: v for k, v in _ALL_MODELS.items() if k.startswith("us_nyc_")},
+    ),
+    "us-mia": MarketSpec(
+        id="us-mia",
+        name="United States • Miami",
+        currency="USD",
+        models={k: v for k, v in _ALL_MODELS.items() if k.startswith("us_mia_")},
     ),
 }
 
@@ -417,6 +534,16 @@ TEL_AVIV_V2_FALLBACK_COLS = [
     "tx_quarter",
     "building_age_at_tx",
     "floor_ratio",
+]
+
+US_FALLBACK_COLS = [
+    "area_m2",
+    "gross_area_m2",
+    "rooms",
+    "floors",
+    "construction_year",
+    "lat",
+    "long",
 ]
 
 
@@ -484,6 +611,45 @@ def build_tel_aviv_features(
         or TEL_AVIV_V2_FALLBACK_COLS
     )
 
+    X = pd.DataFrame([row])
+    for c in feature_cols:
+        if c not in X.columns:
+            X[c] = np.nan
+    return X[feature_cols]
+
+
+def build_us_features(
+    area_m2,
+    gross_area_m2=None,
+    rooms=None,
+    floors=None,
+    construction_year=None,
+    lat=None,
+    long=None,
+    feature_cols_override=None,
+):
+    area_m2 = float(area_m2)
+    gross_area_m2 = float(gross_area_m2) if gross_area_m2 not in [None, ""] else np.nan
+    rooms = float(rooms) if rooms not in [None, ""] else np.nan
+    floors = float(floors) if floors not in [None, ""] else np.nan
+    construction_year = float(construction_year) if construction_year not in [None, ""] else np.nan
+    lat = float(lat) if lat not in [None, ""] else np.nan
+    long = float(long) if long not in [None, ""] else np.nan
+
+    if np.isnan(gross_area_m2):
+        gross_area_m2 = area_m2
+
+    row = {
+        "area_m2": area_m2,
+        "gross_area_m2": gross_area_m2,
+        "rooms": rooms,
+        "floors": floors,
+        "construction_year": construction_year,
+        "lat": lat,
+        "long": long,
+    }
+
+    feature_cols = feature_cols_override or US_FALLBACK_COLS
     X = pd.DataFrame([row])
     for c in feature_cols:
         if c not in X.columns:
@@ -694,6 +860,8 @@ def list_models(market_id: str | None = None):
                 features = TEL_AVIV_REQUIRED_FEATURES + TEL_AVIV_OPTIONAL_FEATURES
             elif spec.id == "tel_aviv_v1":
                 features = TEL_AVIV_REQUIRED_FEATURES
+            elif spec.id.startswith("us_"):
+                features = US_REQUIRED_FEATURES + US_OPTIONAL_FEATURES
             else:
                 features = TAIWAN_FEATURES
 
@@ -788,6 +956,22 @@ def _predict_price_raw(model_id: str, features: dict, market_id: str | None = No
                 float(features.get("lat")),
                 float(features.get("long")),
             ]]
+        )
+        pred = float(spec.model.predict(X)[0])
+        return max(pred, 0.0)
+
+    if model_id.startswith("us_"):
+        if features.get("area_m2") in [None, ""]:
+            raise ValueError("Please provide living area.")
+        X = build_us_features(
+            features.get("area_m2"),
+            gross_area_m2=features.get("gross_area_m2"),
+            rooms=features.get("rooms"),
+            floors=features.get("floors"),
+            construction_year=features.get("construction_year"),
+            lat=features.get("lat"),
+            long=features.get("long"),
+            feature_cols_override=spec.feature_cols,
         )
         pred = float(spec.model.predict(X)[0])
         return max(pred, 0.0)

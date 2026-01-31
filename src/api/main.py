@@ -12,7 +12,7 @@ from .models import Prediction
 from .fx import ALLOWED_CURRENCIES, convert
 from ..ml.predictor import get_baseline_stats, get_comparables, list_markets, list_models, predict
 
-AREA_FIELDS = ["netArea", "grossArea", "roof", "yard"]
+AREA_FIELDS = ["netArea", "grossArea", "roof", "yard", "area_m2", "gross_area_m2"]
 AREA_UNIT_M2 = "m2"
 AREA_UNIT_SQFT = "sqft"
 SQFT_TO_M2 = 0.092903

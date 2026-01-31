@@ -138,6 +138,14 @@ python scripts/etl/nyc_dof_rolling_sales.py --input "<csv>" --output "data/proce
 python scripts/etl/miami_property_point_view.py --input "<csv>" --output "data/processed/us-mia.csv"
 ```
 
+## Train US market models (baseline)
+After you have standardized CSVs:
+```
+python scripts/train_market_model.py --input "data/processed/us-nyc.csv" --market us-nyc
+python scripts/train_market_model.py --input "data/processed/us-mia.csv" --market us-mia
+```
+Models are saved to `models/markets/<market_id>/`.
+
 
 ##  Project Structure
 
