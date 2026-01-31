@@ -3,11 +3,20 @@ import { PredictionResponse } from '@/services/api';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { TrendingUp, Info } from 'lucide-react';
 
 interface PriceResultCardProps {
   prediction: PredictionResponse;
-  onSubmitFeedback?: (actualPrice: number) => Promise<{ abs_error: number; pct_error: number | null }>;
+  displayCurrency?: string | null;
+  currencyOptions?: string[];
+  onSubmitFeedback?: (actualPrice: number, actualCurrency?: string) => Promise<{ abs_error: number; pct_error: number | null }>;
 }
 
 const formatCurrency = (value: number, currency: string) => {
@@ -18,8 +27,9 @@ const formatCurrency = (value: number, currency: string) => {
   }).format(value);
 };
 
-const PriceResultCard = ({ prediction, onSubmitFeedback }: PriceResultCardProps) => {
+const PriceResultCard = ({ prediction, onSubmitFeedback, displayCurrency, currencyOptions = [] }: PriceResultCardProps) => {
   const [actualPrice, setActualPrice] = useState('');
+  const [actualCurrency, setActualCurrency] = useState(displayCurrency || prediction.currency);
   const [feedbackStatus, setFeedbackStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
@@ -34,7 +44,7 @@ const PriceResultCard = ({ prediction, onSubmitFeedback }: PriceResultCardProps)
     setFeedbackStatus('submitting');
     setFeedbackMessage(null);
     try {
-      const result = await onSubmitFeedback(value);
+      const result = await onSubmitFeedback(value, actualCurrency);
       const pct = result.pct_error !== null ? `${(result.pct_error * 100).toFixed(1)}%` : '—';
       setFeedbackStatus('success');
       setFeedbackMessage(`Saved. Abs error: ${formatCurrency(result.abs_error, prediction.currency)} • MAPE: ${pct}`);
@@ -43,6 +53,12 @@ const PriceResultCard = ({ prediction, onSubmitFeedback }: PriceResultCardProps)
       setFeedbackMessage('Failed to save feedback. Please try again.');
     }
   };
+
+  const mainCurrency = prediction.display_currency || prediction.currency;
+  const mainPrice = prediction.display_price ?? prediction.price;
+  const mainP10 = prediction.display_p10 ?? prediction.p10;
+  const mainP50 = prediction.display_p50 ?? prediction.p50;
+  const mainP90 = prediction.display_p90 ?? prediction.p90;
 
   return (
     <div className="animate-scale-in">
@@ -64,8 +80,13 @@ const PriceResultCard = ({ prediction, onSubmitFeedback }: PriceResultCardProps)
             Predicted Price
           </p>
           <p className="text-4xl md:text-5xl font-bold text-foreground tracking-tight">
-            {formatCurrency(prediction.price, prediction.currency)}
+            {formatCurrency(mainPrice, mainCurrency)}
           </p>
+          {prediction.display_currency && prediction.display_currency !== prediction.currency && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Model currency: {formatCurrency(prediction.price, prediction.currency)}
+            </p>
+          )}
         </div>
 
         {/* Confidence range */}
@@ -81,19 +102,19 @@ const PriceResultCard = ({ prediction, onSubmitFeedback }: PriceResultCardProps)
             <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">P10 (Low)</p>
               <p className="text-lg font-semibold text-foreground">
-                {formatCurrency(prediction.p10, prediction.currency)}
+                {formatCurrency(mainP10, mainCurrency)}
               </p>
             </div>
             <div className="text-center border-x border-border">
               <p className="text-xs text-muted-foreground mb-1">P50 (Median)</p>
               <p className="text-lg font-semibold text-primary">
-                {formatCurrency(prediction.p50, prediction.currency)}
+                {formatCurrency(mainP50, mainCurrency)}
               </p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground mb-1">P90 (High)</p>
               <p className="text-lg font-semibold text-foreground">
-                {formatCurrency(prediction.p90, prediction.currency)}
+                {formatCurrency(mainP90, mainCurrency)}
               </p>
             </div>
           </div>
@@ -126,6 +147,18 @@ const PriceResultCard = ({ prediction, onSubmitFeedback }: PriceResultCardProps)
                 placeholder="Enter actual price"
                 className="sm:max-w-[220px]"
               />
+              <Select value={actualCurrency} onValueChange={setActualCurrency}>
+                <SelectTrigger className="sm:max-w-[140px]">
+                  <SelectValue placeholder="Currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(currencyOptions.length > 0 ? currencyOptions : [prediction.currency]).map((cur) => (
+                    <SelectItem key={cur} value={cur}>
+                      {cur}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 type="button"
                 onClick={handleSubmitFeedback}

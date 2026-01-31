@@ -16,9 +16,10 @@ interface PredictionFormProps {
   model: Model;
   onSubmit: (features: Record<string, string | number>) => void;
   isLoading?: boolean;
+  areaUnit?: 'm2' | 'sqft';
 }
 
-const PredictionForm = ({ model, onSubmit, isLoading }: PredictionFormProps) => {
+const PredictionForm = ({ model, onSubmit, isLoading, areaUnit = 'm2' }: PredictionFormProps) => {
   const [formValues, setFormValues] = useState<Record<string, string | number>>({});
 
   useEffect(() => {
@@ -73,7 +74,7 @@ const PredictionForm = ({ model, onSubmit, isLoading }: PredictionFormProps) => 
         />
         {feature.unit && (
           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-            {feature.unit}
+            {feature.unit === 'm²' && areaUnit === 'sqft' ? 'sq ft' : feature.unit}
           </span>
         )}
       </div>

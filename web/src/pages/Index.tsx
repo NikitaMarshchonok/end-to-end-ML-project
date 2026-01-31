@@ -24,6 +24,7 @@ import {
   ComparablesResponse,
   MonitoringResponse,
   MetricsResponse,
+  MetricsTimeseriesItem,
   fetchModels,
   fetchMarkets,
   predictPrice,
@@ -33,6 +34,7 @@ import {
   fetchComparables,
   fetchMonitoring,
   fetchMetrics,
+  fetchMetricsTimeseries,
   submitFeedback,
   mockMarkets,
   mockModels,
@@ -42,6 +44,7 @@ import {
   generateMockMonitoring,
   generateMockFeedback,
   generateMockMetrics,
+  generateMockMetricsTimeseries,
 } from '@/services/api';
 
 interface RecentPrediction {
@@ -58,6 +61,8 @@ const Index = () => {
   const [markets, setMarkets] = useState<Market[]>([]);
   const [selectedMarketId, setSelectedMarketId] = useState<string | null>(null);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [areaUnit, setAreaUnit] = useState<'m2' | 'sqft'>('m2');
+  const [displayCurrency, setDisplayCurrency] = useState<string | null>(null);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [modelsError, setModelsError] = useState<string | null>(null);
 
@@ -71,10 +76,38 @@ const Index = () => {
   const [predictionError, setPredictionError] = useState<string | null>(null);
   const [modelHealth, setModelHealth] = useState<MonitoringResponse | null>(null);
   const [modelMetrics, setModelMetrics] = useState<MetricsResponse | null>(null);
+  const [metricsSeries, setMetricsSeries] = useState<MetricsTimeseriesItem[] | null>(null);
 
   const [recentPredictions, setRecentPredictions] = useState<RecentPrediction[]>([]);
 
   const selectedModel = models.find(m => m.id === selectedModelId);
+  const baseCurrency = markets.find(m => m.id === selectedMarketId)?.currency;
+  const currencyOptions = Array.from(
+    new Set(
+      [baseCurrency, 'USD', 'EUR', 'ILS', 'TWD'].filter(Boolean) as string[]
+    )
+  );
+
+  const applyMockDisplayCurrency = (prediction: PredictionResponse) => {
+    if (!displayCurrency || displayCurrency === prediction.currency) {
+      return prediction;
+    }
+    const rates: Record<string, Record<string, number>> = {
+      ILS: { USD: 0.27, EUR: 0.25, TWD: 8.6 },
+      USD: { ILS: 3.7, EUR: 0.92, TWD: 31.8 },
+      EUR: { ILS: 4.0, USD: 1.08, TWD: 34.5 },
+      TWD: { ILS: 0.12, USD: 0.032, EUR: 0.029 },
+    };
+    const rate = rates[prediction.currency]?.[displayCurrency] || 1;
+    return {
+      ...prediction,
+      display_currency: displayCurrency,
+      display_price: prediction.price * rate,
+      display_p10: prediction.p10 * rate,
+      display_p50: prediction.p50 * rate,
+      display_p90: prediction.p90 * rate,
+    };
+  };
 
   useEffect(() => {
     loadMarkets();
@@ -91,6 +124,14 @@ const Index = () => {
       loadModels(selectedMarketId);
     }
   }, [selectedMarketId]);
+
+  useEffect(() => {
+    if (!selectedMarketId) return;
+    const market = markets.find(m => m.id === selectedMarketId);
+    if (market && !displayCurrency) {
+      setDisplayCurrency(market.currency);
+    }
+  }, [selectedMarketId, markets, displayCurrency]);
 
   const loadMarkets = async () => {
     try {
@@ -184,7 +225,7 @@ const Index = () => {
       if (USE_MOCK_DATA) {
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 1200));
-        result = generateMockPrediction(selectedModelId, features);
+        result = applyMockDisplayCurrency(generateMockPrediction(selectedModelId, features));
         explain = generateMockExplain(selectedModelId, features);
         comparables = generateMockComparables(selectedModelId, features, topK);
       } else {
@@ -192,17 +233,23 @@ const Index = () => {
           market_id: selectedMarketId,
           model_id: selectedModelId,
           features,
+          area_unit: areaUnit,
+          display_currency: displayCurrency || undefined,
         });
         explain = await explainPrediction({
           market_id: selectedMarketId,
           model_id: selectedModelId,
           features,
+          area_unit: areaUnit,
+          display_currency: displayCurrency || undefined,
         });
         comparables = await fetchComparables(
           {
             market_id: selectedMarketId,
             model_id: selectedModelId,
             features,
+            area_unit: areaUnit,
+            display_currency: displayCurrency || undefined,
           },
           topK
         );
@@ -264,6 +311,8 @@ const Index = () => {
     setRecentPredictions([]);
     setModelHealth(null);
     setModelMetrics(null);
+    const market = markets.find(m => m.id === marketId);
+    setDisplayCurrency(market?.currency || null);
   };
 
   useEffect(() => {
@@ -280,18 +329,21 @@ const Index = () => {
         market_id: selectedMarketId,
         model_id: lastModelId,
         features: lastFeatures,
+        area_unit: areaUnit,
+        display_currency: displayCurrency || undefined,
       },
       topK
     )
       .then(setCurrentComparables)
       .catch(() => {});
-  }, [comparablesCount, lastFeatures, lastModelId, currentPrediction, selectedMarketId]);
+  }, [comparablesCount, lastFeatures, lastModelId, currentPrediction, selectedMarketId, areaUnit, displayCurrency]);
 
   useEffect(() => {
     if (!selectedModelId || !selectedMarketId) return;
     if (USE_MOCK_DATA) {
       setModelHealth(generateMockMonitoring(selectedModelId));
       setModelMetrics(generateMockMetrics());
+      setMetricsSeries(generateMockMetricsTimeseries());
       return;
     }
     fetchMonitoring(selectedModelId, selectedMarketId)
@@ -300,9 +352,12 @@ const Index = () => {
     fetchMetrics(selectedModelId, selectedMarketId)
       .then(setModelMetrics)
       .catch(() => setModelMetrics(null));
+    fetchMetricsTimeseries(selectedModelId, selectedMarketId)
+      .then(setMetricsSeries)
+      .catch(() => setMetricsSeries(null));
   }, [selectedModelId, selectedMarketId]);
 
-  const handleSubmitFeedback = async (actualPrice: number) => {
+  const handleSubmitFeedback = async (actualPrice: number, actualCurrency?: string) => {
     if (!currentPrediction?.prediction_id) {
       throw new Error('Missing prediction id');
     }
@@ -310,12 +365,16 @@ const Index = () => {
     if (USE_MOCK_DATA) {
       const feedback = generateMockFeedback();
       setModelMetrics(generateMockMetrics());
+      setMetricsSeries(generateMockMetricsTimeseries());
       return feedback;
     }
 
-    const feedback = await submitFeedback(currentPrediction.prediction_id, actualPrice);
+    const feedback = await submitFeedback(currentPrediction.prediction_id, actualPrice, actualCurrency);
     fetchMetrics(selectedModelId || undefined, selectedMarketId || undefined)
       .then(setModelMetrics)
+      .catch(() => {});
+    fetchMetricsTimeseries(selectedModelId || undefined, selectedMarketId || undefined)
+      .then(setMetricsSeries)
       .catch(() => {});
     return feedback;
   };
@@ -360,6 +419,40 @@ const Index = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Area unit
+                  </label>
+                  <Select value={areaUnit} onValueChange={(value) => setAreaUnit(value as 'm2' | 'sqft')}>
+                    <SelectTrigger className="w-full h-12 bg-background border-border hover:border-primary/50 transition-colors">
+                      <SelectValue placeholder="Choose unit..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="m2">m²</SelectItem>
+                      <SelectItem value="sqft">sq ft</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Display currency
+                  </label>
+                  <Select
+                    value={displayCurrency || baseCurrency || ''}
+                    onValueChange={setDisplayCurrency}
+                  >
+                    <SelectTrigger className="w-full h-12 bg-background border-border hover:border-primary/50 transition-colors">
+                      <SelectValue placeholder="Choose currency..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencyOptions.map((cur) => (
+                        <SelectItem key={cur} value={cur}>
+                          {cur}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <ModelSelector
                   models={models}
                   selectedModelId={selectedModelId}
@@ -372,6 +465,7 @@ const Index = () => {
                       model={selectedModel}
                       onSubmit={handlePredict}
                       isLoading={isPredicting}
+                      areaUnit={areaUnit}
                     />
                   </div>
                 )}
@@ -396,11 +490,13 @@ const Index = () => {
                 <PriceResultCard
                   prediction={currentPrediction}
                   onSubmitFeedback={handleSubmitFeedback}
+                  displayCurrency={displayCurrency}
+                  currencyOptions={currencyOptions}
                 />
                 <ExplainabilitySection
                   factors={currentExplain?.factors || currentPrediction.factors}
-                  ranges={currentExplain?.ranges}
-                  currency={currentExplain?.currency || currentPrediction.currency}
+                  ranges={currentExplain?.display_ranges || currentExplain?.ranges}
+                  currency={currentExplain?.display_currency || currentExplain?.currency || currentPrediction.currency}
                 />
               </div>
 
@@ -440,7 +536,7 @@ const Index = () => {
           </div>
 
           <div className="mt-8">
-            <ModelHealth data={modelHealth} metrics={modelMetrics} />
+            <ModelHealth data={modelHealth} metrics={modelMetrics} timeseries={metricsSeries} />
           </div>
         </div>
       </main>

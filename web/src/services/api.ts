@@ -32,6 +32,7 @@ export interface PredictionRequest {
   market_id: string;
   model_id: string;
   features: Record<string, string | number>;
+  area_unit?: 'm2' | 'sqft';
 }
 
 export interface PredictionResponse {
@@ -43,6 +44,11 @@ export interface PredictionResponse {
   currency: string;
   factors: Factor[];
   prediction_id?: number | null;
+  display_currency?: string | null;
+  display_price?: number | null;
+  display_p10?: number | null;
+  display_p50?: number | null;
+  display_p90?: number | null;
 }
 
 export interface ExplainRange {
@@ -56,6 +62,8 @@ export interface ExplainResponse {
   currency: string;
   factors: Factor[];
   ranges: ExplainRange[];
+  display_currency?: string | null;
+  display_ranges?: ExplainRange[] | null;
 }
 
 export interface PredictionHistoryItem {
@@ -69,6 +77,7 @@ export interface PredictionHistoryItem {
   p10: number;
   p50: number;
   p90: number;
+  area_unit?: 'm2' | 'sqft';
   features: Record<string, string | number>;
   factors: Factor[];
 }
@@ -113,6 +122,7 @@ export interface FeedbackResponse {
   actual_price: number;
   abs_error: number;
   pct_error: number | null;
+  actual_currency?: string;
 }
 
 export interface MetricsResponse {
@@ -120,6 +130,14 @@ export interface MetricsResponse {
   mae: number | null;
   mape: number | null;
   rmse: number | null;
+}
+
+export interface MetricsTimeseriesItem {
+  bucket: string;
+  count: number;
+  mae: number;
+  rmse: number;
+  mape: number | null;
 }
 
 export interface Factor {
@@ -215,7 +233,11 @@ export const fetchMonitoring = async (modelId: string, marketId?: string): Promi
   return response.json();
 };
 
-export const submitFeedback = async (predictionId: number, actualPrice: number): Promise<FeedbackResponse> => {
+export const submitFeedback = async (
+  predictionId: number,
+  actualPrice: number,
+  actualCurrency?: string
+): Promise<FeedbackResponse> => {
   const response = await fetch(`${API_BASE_URL}/feedback`, {
     method: 'POST',
     headers: {
@@ -224,6 +246,7 @@ export const submitFeedback = async (predictionId: number, actualPrice: number):
     body: JSON.stringify({
       prediction_id: predictionId,
       actual_price: actualPrice,
+      actual_currency: actualCurrency,
     }),
   });
   if (!response.ok) {
@@ -240,6 +263,18 @@ export const fetchMetrics = async (modelId?: string, marketId?: string): Promise
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error('Failed to fetch metrics');
+  }
+  return response.json();
+};
+
+export const fetchMetricsTimeseries = async (modelId?: string, marketId?: string, bucket: 'day' | 'week' = 'day'): Promise<MetricsTimeseriesItem[]> => {
+  const params: string[] = [`bucket=${bucket}`];
+  if (modelId) params.push(`model_id=${modelId}`);
+  if (marketId) params.push(`market_id=${marketId}`);
+  const url = `${API_BASE_URL}/metrics/timeseries?${params.join('&')}`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error('Failed to fetch metrics timeseries');
   }
   return response.json();
 };
@@ -431,4 +466,13 @@ export const generateMockMetrics = (): MetricsResponse => {
     mape: 0.07,
     rmse: 320000,
   };
+};
+
+export const generateMockMetricsTimeseries = (): MetricsTimeseriesItem[] => {
+  return [
+    { bucket: '2025-01-05', count: 2, mae: 240000, rmse: 310000, mape: 0.08 },
+    { bucket: '2025-01-12', count: 3, mae: 220000, rmse: 300000, mape: 0.075 },
+    { bucket: '2025-01-19', count: 4, mae: 205000, rmse: 290000, mape: 0.07 },
+    { bucket: '2025-01-26', count: 3, mae: 190000, rmse: 270000, mape: 0.065 },
+  ];
 };

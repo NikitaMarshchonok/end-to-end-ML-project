@@ -11,6 +11,7 @@ class Prediction(Base):
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     market_id = Column(String, nullable=False, default="il-tlv")
+    area_unit = Column(String, nullable=False, default="m2")
     model_id = Column(String, nullable=False)
     model_version = Column(String, nullable=False)
     currency = Column(String, nullable=False)
@@ -23,3 +24,4 @@ class Prediction(Base):
     actual_price = Column(Float, nullable=True)
     abs_error = Column(Float, nullable=True)
     pct_error = Column(Float, nullable=True)
+    actual_currency = Column(String, nullable=True)

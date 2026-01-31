@@ -1,11 +1,18 @@
-import { MetricsResponse, MonitoringResponse } from '@/services/api';
+import { MetricsResponse, MetricsTimeseriesItem, MonitoringResponse } from '@/services/api';
 import { Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
 
 interface ModelHealthProps {
   data: MonitoringResponse | null;
   metrics?: MetricsResponse | null;
+  timeseries?: MetricsTimeseriesItem[] | null;
 }
 
 const driftLabel = (score: number) => {
@@ -24,7 +31,7 @@ const formatPct = (value: number | null) => {
   return `${(value * 100).toFixed(1)}%`;
 };
 
-const ModelHealth = ({ data, metrics }: ModelHealthProps) => {
+const ModelHealth = ({ data, metrics, timeseries }: ModelHealthProps) => {
   if (!data) return null;
 
   if (data.note) {
@@ -46,6 +53,13 @@ const ModelHealth = ({ data, metrics }: ModelHealthProps) => {
 
   const highCount = data.drift.filter((d) => d.drift_score >= 1.0).length;
   const mediumCount = data.drift.filter((d) => d.drift_score >= 0.5 && d.drift_score < 1.0).length;
+
+  const chartData =
+    timeseries?.map((item) => ({
+      bucket: item.bucket,
+      mae: item.mae,
+      mape: item.mape !== null ? item.mape * 100 : null,
+    })) || [];
 
   return (
     <div className="bg-card rounded-2xl shadow-card p-6 border border-border animate-fade-in">
@@ -142,6 +156,52 @@ const ModelHealth = ({ data, metrics }: ModelHealthProps) => {
           </div>
         )}
       </div>
+
+      {chartData.length > 1 && (
+        <div className="mt-6 rounded-xl border border-border bg-background p-4">
+          <div className="mb-3 text-sm font-medium text-foreground">Accuracy trend</div>
+          <ChartContainer
+            config={{
+              mae: { label: 'MAE', color: 'hsl(var(--primary))' },
+              mape: { label: 'MAPE %', color: 'hsl(var(--destructive))' },
+            }}
+            className="h-[220px]"
+          >
+            <LineChart data={chartData}>
+              <CartesianGrid vertical={false} />
+              <XAxis dataKey="bucket" tickLine={false} axisLine={false} minTickGap={20} />
+              <YAxis yAxisId="left" tickLine={false} axisLine={false} width={40} />
+              <YAxis yAxisId="right" orientation="right" tickLine={false} axisLine={false} width={40} />
+              <ChartTooltip
+                content={
+                  <ChartTooltipContent
+                    formatter={(value, name) => {
+                      if (name === 'mape') return [`${Number(value).toFixed(1)}%`, 'MAPE'];
+                      return [Number(value).toFixed(0), 'MAE'];
+                    }}
+                  />
+                }
+              />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="mae"
+                stroke="var(--color-mae)"
+                strokeWidth={2}
+                dot={false}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="mape"
+                stroke="var(--color-mape)"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ChartContainer>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
         <span>Drift score = |recent_mean − baseline_mean| / baseline_std</span>

@@ -110,11 +110,13 @@ Tests:
 ## Architecture (monorepo)
 
 - Dash (`src/app.py`) stays as internal admin/demo UI.
-- FastAPI (`src/api/main.py`) exposes `/markets`, `/models`, `/predict`, `/explain`, `/comparables`, `/monitoring`, `/feedback`, `/metrics`, `/health`.
+- FastAPI (`src/api/main.py`) exposes `/markets`, `/models`, `/predict`, `/explain`, `/comparables`, `/monitoring`, `/feedback`, `/metrics`, `/metrics/timeseries`, `/health`.
 - Frontend in `web/` (Vite + React) renders the product UI and calls the API.
 - Predictions history is stored in a DB when `DATABASE_URL` is configured (defaults to SQLite).
 - Feedback loop uses the same DB; if you use SQLite and already have `data/predictions.db`, delete it once to apply the new schema.
 - Multi-market support requires `market_id` in API requests; `/markets` returns available markets.
+- Data contract: `area_unit` can be `m2` (default) or `sqft` and will be normalized on the API side.
+- Live FX: API supports `display_currency` (USD/EUR/ILS/TWD) and converts prices via exchangerate.host.
 
 
 ##  Project Structure
