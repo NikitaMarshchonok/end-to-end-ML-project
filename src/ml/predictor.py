@@ -213,6 +213,26 @@ TEL_AVIV_OPTIONAL_FEATURES = [
         "placeholder": "30",
         "required": False,
     },
+    {
+        "name": "lat",
+        "type": "number",
+        "label": "Latitude",
+        "min": 20,
+        "max": 40,
+        "step": 0.0001,
+        "placeholder": "32.08",
+        "required": False,
+    },
+    {
+        "name": "long",
+        "type": "number",
+        "label": "Longitude",
+        "min": 20,
+        "max": 40,
+        "step": 0.0001,
+        "placeholder": "34.78",
+        "required": False,
+    },
 ]
 
 TAIWAN_FEATURES = [
@@ -448,6 +468,8 @@ def build_tel_aviv_features(
         "roof": roof,
         "yard": yard,
         "constructionYear": year,
+        "lat": np.nan,
+        "long": np.nan,
         "tx_year": tx_year,
         "tx_month": tx_month,
         "tx_quarter": tx_quarter,

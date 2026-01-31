@@ -14,6 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import LoadingState from '@/components/LoadingState';
 import ErrorState from '@/components/ErrorState';
 import {
@@ -27,6 +29,7 @@ import {
   MetricsTimeseriesItem,
   fetchModels,
   fetchMarkets,
+  resolveMarket,
   predictPrice,
   explainPrediction,
   fetchPredictions,
@@ -63,6 +66,9 @@ const Index = () => {
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [areaUnit, setAreaUnit] = useState<'m2' | 'sqft'>('m2');
   const [displayCurrency, setDisplayCurrency] = useState<string | null>(null);
+  const [geoLat, setGeoLat] = useState('');
+  const [geoLong, setGeoLong] = useState('');
+  const [geoStatus, setGeoStatus] = useState<string | null>(null);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [modelsError, setModelsError] = useState<string | null>(null);
 
@@ -313,6 +319,23 @@ const Index = () => {
     setModelMetrics(null);
     const market = markets.find(m => m.id === marketId);
     setDisplayCurrency(market?.currency || null);
+    setGeoStatus(null);
+  };
+
+  const handleResolveMarket = async () => {
+    const lat = Number(geoLat);
+    const long = Number(geoLong);
+    if (!lat || !long) {
+      setGeoStatus('Enter valid coordinates.');
+      return;
+    }
+    try {
+      const result = await resolveMarket(lat, long);
+      setSelectedMarketId(result.market_id);
+      setGeoStatus(`Detected: ${result.market_name} (${result.distance_km.toFixed(0)} km)`);
+    } catch {
+      setGeoStatus('Failed to detect market. Please try again.');
+    }
   };
 
   useEffect(() => {
@@ -418,6 +441,26 @@ const Index = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                    <Input
+                      type="number"
+                      placeholder="Latitude"
+                      value={geoLat}
+                      onChange={(e) => setGeoLat(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Longitude"
+                      value={geoLong}
+                      onChange={(e) => setGeoLong(e.target.value)}
+                    />
+                    <Button type="button" variant="secondary" onClick={handleResolveMarket}>
+                      Detect
+                    </Button>
+                  </div>
+                  {geoStatus && (
+                    <p className="text-xs text-muted-foreground mt-2">{geoStatus}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-foreground">

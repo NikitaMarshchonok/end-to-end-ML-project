@@ -16,6 +16,10 @@ AREA_FIELDS = ["netArea", "grossArea", "roof", "yard"]
 AREA_UNIT_M2 = "m2"
 AREA_UNIT_SQFT = "sqft"
 SQFT_TO_M2 = 0.092903
+MARKET_CENTROIDS = {
+    "il-tlv": {"name": "Israel • Tel Aviv", "lat": 32.0853, "long": 34.7818},
+    "tw-tpe": {"name": "Taiwan • Taipei", "lat": 25.0330, "long": 121.5654},
+}
 
 
 def normalize_features(features: dict[str, Any], area_unit: str) -> dict[str, Any]:
@@ -33,6 +37,15 @@ def normalize_features(features: dict[str, Any], area_unit: str) -> dict[str, An
             except Exception:
                 pass
     return normalized
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    from math import radians, sin, cos, sqrt, atan2
+    r = 6371.0
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+    return 2 * r * atan2(sqrt(a), sqrt(1 - a))
 
 
 class PredictionRequest(BaseModel):
@@ -107,6 +120,23 @@ def get_models(market_id: str | None = None):
 @app.get("/markets")
 def get_markets():
     return list_markets()
+
+
+@app.get("/markets/resolve")
+def resolve_market(lat: float, long: float):
+    if lat < -90 or lat > 90 or long < -180 or long > 180:
+        raise HTTPException(status_code=400, detail="Invalid coordinates.")
+
+    best = None
+    for market_id, meta in MARKET_CENTROIDS.items():
+        d = haversine_km(lat, long, meta["lat"], meta["long"])
+        if best is None or d < best["distance_km"]:
+            best = {
+                "market_id": market_id,
+                "market_name": meta["name"],
+                "distance_km": d,
+            }
+    return best
 
 
 @app.post("/predict")

@@ -163,6 +163,14 @@ export const fetchMarkets = async (): Promise<Market[]> => {
   return response.json();
 };
 
+export const resolveMarket = async (lat: number, long: number): Promise<{ market_id: string; market_name: string; distance_km: number }> => {
+  const response = await fetch(`${API_BASE_URL}/markets/resolve?lat=${lat}&long=${long}`);
+  if (!response.ok) {
+    throw new Error('Failed to resolve market');
+  }
+  return response.json();
+};
+
 export const predictPrice = async (request: PredictionRequest): Promise<PredictionResponse> => {
   const response = await fetch(`${API_BASE_URL}/predict`, {
     method: 'POST',
