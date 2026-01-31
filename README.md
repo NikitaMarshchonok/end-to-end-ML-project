@@ -118,6 +118,26 @@ Tests:
 - Data contract: `area_unit` can be `m2` (default) or `sqft` and will be normalized on the API side.
 - Live FX: API supports `display_currency` (USD/EUR/ILS/TWD) and converts prices via exchangerate.host.
 
+## Multi-market data pipeline (NYC + Miami)
+
+Standardized contract: `data_contract/real_estate_contract.md`
+
+### NYC DOF Rolling Sales (open data)
+1) Download CSVs from:
+   https://www.nyc.gov/site/finance/property/property-rolling-sales-data.page
+2) Transform to contract:
+```
+python scripts/etl/nyc_dof_rolling_sales.py --input "<csv>" --output "data/processed/us-nyc.csv"
+```
+
+### Miami-Dade Property Appraiser (open data)
+1) Download dataset from:
+   https://opendata.miamidade.gov/search?collection=dataset&q=Property+Appraiser
+2) Transform to contract:
+```
+python scripts/etl/miami_property_point_view.py --input "<csv>" --output "data/processed/us-mia.csv"
+```
+
 
 ##  Project Structure
 
