@@ -414,6 +414,11 @@ const Index = () => {
               <LoadingState message="Loading prediction models..." />
             ) : modelsError ? (
               <ErrorState message={modelsError} onRetry={loadModels} />
+            ) : models.length === 0 ? (
+              <ErrorState
+                message="No models available for this market yet. Train and load a model to proceed."
+                onRetry={() => loadModels(selectedMarketId)}
+              />
             ) : (
               <div className="space-y-6">
                 <div className="space-y-2">
@@ -496,11 +501,13 @@ const Index = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <ModelSelector
-                  models={models}
-                  selectedModelId={selectedModelId}
-                  onSelect={handleModelSelect}
-                />
+                {models.length > 0 && (
+                  <ModelSelector
+                    models={models}
+                    selectedModelId={selectedModelId}
+                    onSelect={handleModelSelect}
+                  />
+                )}
 
                 {selectedModel && (
                   <div className="pt-4 border-t border-border">

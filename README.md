@@ -127,7 +127,16 @@ Standardized contract: `data_contract/real_estate_contract.md`
    https://www.nyc.gov/site/finance/property/property-rolling-sales-data.page
 2) Transform to contract:
 ```
-python scripts/etl/nyc_dof_rolling_sales.py --input "<csv>" --output "data/processed/us-nyc.csv"
+python scripts/etl/nyc_dof_rolling_sales.py --input "<xlsx or csv>" --output "data/processed/us-nyc.csv"
+```
+If you downloaded all borough files (xlsx), convert each and then merge:
+```
+python scripts/etl/nyc_dof_rolling_sales.py --input "data/raw/nyc/rollingsales_manhattan.xlsx" --output "data/processed/nyc_manhattan.csv"
+python scripts/etl/nyc_dof_rolling_sales.py --input "data/raw/nyc/rollingsales_bronx.xlsx" --output "data/processed/nyc_bronx.csv"
+python scripts/etl/nyc_dof_rolling_sales.py --input "data/raw/nyc/rollingsales_brooklyn.xlsx" --output "data/processed/nyc_brooklyn.csv"
+python scripts/etl/nyc_dof_rolling_sales.py --input "data/raw/nyc/rollingsales_queens.xlsx" --output "data/processed/nyc_queens.csv"
+python scripts/etl/nyc_dof_rolling_sales.py --input "data/raw/nyc/rollingsales_statenisland.xlsx" --output "data/processed/nyc_statenisland.csv"
+python scripts/etl/merge_contracts.py --inputs "data/processed/nyc_*.csv" --output "data/processed/us-nyc.csv"
 ```
 
 ### Miami-Dade Property Appraiser (open data)
