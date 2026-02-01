@@ -474,6 +474,8 @@ def _load_models() -> dict[str, ModelSpec]:
             metrics=safe_load_json(metrics_path),
         )
 
+    _load_market_model("us-nyc", "us_nyc_v2", "NYC model v2 (cleaned + log target)")
+    _load_market_model("us-mia", "us_mia_v2", "Miami model v2 (cleaned + log target)")
     _load_market_model("us-nyc", "us_nyc_v1", "NYC model v1 (baseline)")
     _load_market_model("us-mia", "us_mia_v1", "Miami model v1 (baseline)")
 
@@ -974,6 +976,8 @@ def _predict_price_raw(model_id: str, features: dict, market_id: str | None = No
             feature_cols_override=spec.feature_cols,
         )
         pred = float(spec.model.predict(X)[0])
+        if spec.metrics and spec.metrics.get("log_target"):
+            pred = np.expm1(pred)
         return max(pred, 0.0)
 
     raise ValueError("Unsupported model.")
