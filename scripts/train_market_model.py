@@ -6,7 +6,10 @@ from datetime import datetime
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 
@@ -42,7 +45,7 @@ def time_split(df: pd.DataFrame, date_col: str = "transaction_date", test_size: 
     return df.iloc[:split_idx], df.iloc[split_idx:]
 
 
-def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
+def build_preprocessor(df: pd.DataFrame) -> ColumnTransformer:
     X_num = df[NUMERIC_COLS].copy()
     X_num = X_num.fillna(X_num.median(numeric_only=True))
 
@@ -50,13 +53,27 @@ def prepare_features(df: pd.DataFrame) -> pd.DataFrame:
     for col in CATEGORICAL_COLS:
         X_cat[col] = X_cat[col].fillna("Unknown").astype(str)
 
-    X = pd.concat([X_num, X_cat], axis=1)
-    X = pd.get_dummies(X, columns=CATEGORICAL_COLS, dummy_na=False)
-    return X
+    # Fit encoder on train categories only
+    encoder = OneHotEncoder(handle_unknown="ignore", sparse=False)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("num", "passthrough", NUMERIC_COLS),
+            ("cat", encoder, CATEGORICAL_COLS),
+        ],
+        remainder="drop",
+    )
+    preprocessor.fit(pd.concat([X_num, X_cat], axis=1))
+    return preprocessor
 
 
 def train_model(df_train: pd.DataFrame, log_target: bool):
-    X = prepare_features(df_train)
+    X_num = df_train[NUMERIC_COLS].copy()
+    X_num = X_num.fillna(X_num.median(numeric_only=True))
+    X_cat = df_train[CATEGORICAL_COLS].copy()
+    for col in CATEGORICAL_COLS:
+        X_cat[col] = X_cat[col].fillna("Unknown").astype(str)
+    X = pd.concat([X_num, X_cat], axis=1)
+    preprocessor = build_preprocessor(df_train)
     y = df_train["price"].astype(float)
     if log_target:
         y = np.log1p(y)
@@ -66,12 +83,24 @@ def train_model(df_train: pd.DataFrame, log_target: bool):
         random_state=42,
         n_jobs=-1,
     )
-    model.fit(X, y)
-    return model, list(X.columns)
+    pipeline = Pipeline(
+        steps=[
+            ("preprocess", preprocessor),
+            ("model", model),
+        ]
+    )
+    pipeline.fit(X, y)
+    feature_cols = NUMERIC_COLS + CATEGORICAL_COLS
+    return pipeline, feature_cols
 
 
 def evaluate(model, df_test: pd.DataFrame, log_target: bool):
-    X = prepare_features(df_test)
+    X_num = df_test[NUMERIC_COLS].copy()
+    X_num = X_num.fillna(X_num.median(numeric_only=True))
+    X_cat = df_test[CATEGORICAL_COLS].copy()
+    for col in CATEGORICAL_COLS:
+        X_cat[col] = X_cat[col].fillna("Unknown").astype(str)
+    X = pd.concat([X_num, X_cat], axis=1)
     y_true = df_test["price"].astype(float)
     y_pred = model.predict(X)
     if log_target:
