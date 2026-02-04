@@ -54,7 +54,10 @@ def build_preprocessor(df: pd.DataFrame) -> ColumnTransformer:
         X_cat[col] = X_cat[col].fillna("Unknown").astype(str)
 
     # Fit encoder on train categories only
-    encoder = OneHotEncoder(handle_unknown="ignore", sparse=False)
+    try:
+        encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    except TypeError:
+        encoder = OneHotEncoder(handle_unknown="ignore", sparse=False)
     preprocessor = ColumnTransformer(
         transformers=[
             ("num", "passthrough", NUMERIC_COLS),
