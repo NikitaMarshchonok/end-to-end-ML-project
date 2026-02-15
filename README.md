@@ -296,14 +296,4 @@ Dash
 
 
 
-Author
 
-
-        Nikita Marshchonok
-
-
-telegram: @nikitamarshchonok
-
-LinkedIn: https://linkedin.com/in/nikita-marshchonok
-
-email: n.marshchonok@gmail.com
