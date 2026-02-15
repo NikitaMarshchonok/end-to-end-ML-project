@@ -278,6 +278,19 @@ MLOps-lite:
 
 
 
+## Tech Stack
+```
+Python
+
+Pandas / NumPy
+
+Scikit-learn
+
+Joblib
+
+Dash
+```
+
 
 Author
 
