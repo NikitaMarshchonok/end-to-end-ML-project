@@ -1,4 +1,4 @@
-# Real Estate Price Prediction — Tel Aviv (v1 / v2 / v3.2_clean) + Taiwan baseline
+# Real Estate Price Prediction 
 [![CI](https://github.com/NikitaMarshchonok/end-to-end-ML-project/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/NikitaMarshchonok/end-to-end-ML-project/actions/workflows/ci.yml)
 
 End-to-end ML portfolio project with a clean **Dash UI** for **real estate price prediction**.  
