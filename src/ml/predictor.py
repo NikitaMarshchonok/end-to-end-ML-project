@@ -628,6 +628,9 @@ def build_us_features(
     construction_year=None,
     lat=None,
     long=None,
+    neighborhood=None,
+    building_class=None,
+    property_type=None,
     feature_cols_override=None,
 ):
     area_m2 = float(area_m2)
@@ -637,6 +640,9 @@ def build_us_features(
     construction_year = float(construction_year) if construction_year not in [None, ""] else np.nan
     lat = float(lat) if lat not in [None, ""] else np.nan
     long = float(long) if long not in [None, ""] else np.nan
+    neighborhood = str(neighborhood).strip() if neighborhood not in [None, ""] else "Unknown"
+    building_class = str(building_class).strip() if building_class not in [None, ""] else "Unknown"
+    property_type = str(property_type).strip() if property_type not in [None, ""] else "Unknown"
 
     if np.isnan(gross_area_m2):
         gross_area_m2 = area_m2
@@ -649,13 +655,19 @@ def build_us_features(
         "construction_year": construction_year,
         "lat": lat,
         "long": long,
+        "neighborhood": neighborhood,
+        "building_class": building_class,
+        "property_type": property_type,
     }
 
     feature_cols = feature_cols_override or US_FALLBACK_COLS
     X = pd.DataFrame([row])
     for c in feature_cols:
         if c not in X.columns:
-            X[c] = np.nan
+            if c in ("neighborhood", "building_class", "property_type"):
+                X[c] = "Unknown"
+            else:
+                X[c] = np.nan
     return X[feature_cols]
 
 
@@ -973,6 +985,9 @@ def _predict_price_raw(model_id: str, features: dict, market_id: str | None = No
             construction_year=features.get("construction_year"),
             lat=features.get("lat"),
             long=features.get("long"),
+            neighborhood=features.get("neighborhood"),
+            building_class=features.get("building_class"),
+            property_type=features.get("property_type"),
             feature_cols_override=spec.feature_cols,
         )
         pred = float(spec.model.predict(X)[0])
