@@ -463,17 +463,22 @@ def _load_models() -> dict[str, ModelSpec]:
         model_obj = _safe_joblib_load(model_path)
         if model_obj is None:
             return
+        metrics = safe_load_json(metrics_path)
+        version_token = model_id.rsplit("_", 1)[-1]
+        version = version_token.replace("v", "") if version_token.startswith("v") else "1.0"
         models[model_id] = ModelSpec(
             id=model_id,
             name=name,
-            version="1.0",
+            version=version,
             currency="USD",
             model=model_obj,
             feature_cols=safe_load_json(feat_path),
-            log1p_target=False,
-            metrics=safe_load_json(metrics_path),
+            log1p_target=bool((metrics or {}).get("log_target", False)),
+            metrics=metrics,
         )
 
+    _load_market_model("us-nyc", "us_nyc_v3", "NYC model v3 (extra trees + engineered)")
+    _load_market_model("us-mia", "us_mia_v3", "Miami model v3 (extra trees + engineered)")
     _load_market_model("us-nyc", "us_nyc_v2", "NYC model v2 (cleaned + log target)")
     _load_market_model("us-mia", "us_mia_v2", "Miami model v2 (cleaned + log target)")
     _load_market_model("us-nyc", "us_nyc_v1", "NYC model v1 (baseline)")
@@ -546,6 +551,15 @@ US_FALLBACK_COLS = [
     "construction_year",
     "lat",
     "long",
+    "area_log",
+    "gross_to_net",
+    "age_at_tx",
+    "tx_year",
+    "tx_month",
+    "tx_quarter",
+    "neighborhood",
+    "building_class",
+    "property_type",
 ]
 
 
@@ -647,6 +661,21 @@ def build_us_features(
     if np.isnan(gross_area_m2):
         gross_area_m2 = area_m2
 
+    now = datetime.now()
+    tx_year = now.year
+    tx_month = now.month
+    tx_quarter = (tx_month - 1) // 3 + 1
+
+    area_log = float(np.log1p(max(area_m2, 0.0)))
+    gross_to_net = gross_area_m2 / area_m2 if area_m2 > 0 else np.nan
+    if not np.isfinite(gross_to_net):
+        gross_to_net = np.nan
+    gross_to_net = float(np.clip(gross_to_net if not np.isnan(gross_to_net) else 1.0, 0.5, 5.0))
+
+    age_at_tx = np.nan
+    if not np.isnan(construction_year):
+        age_at_tx = max(0.0, float(tx_year) - construction_year)
+
     row = {
         "area_m2": area_m2,
         "gross_area_m2": gross_area_m2,
@@ -655,6 +684,12 @@ def build_us_features(
         "construction_year": construction_year,
         "lat": lat,
         "long": long,
+        "area_log": area_log,
+        "gross_to_net": gross_to_net,
+        "age_at_tx": age_at_tx,
+        "tx_year": tx_year,
+        "tx_month": tx_month,
+        "tx_quarter": tx_quarter,
         "neighborhood": neighborhood,
         "building_class": building_class,
         "property_type": property_type,
