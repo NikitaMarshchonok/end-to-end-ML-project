@@ -166,13 +166,15 @@ const Index = () => {
         const filtered = marketId ? mockModels.filter(m => m.market_id === marketId) : mockModels;
         setModels(filtered);
         if (filtered.length > 0) {
-          setSelectedModelId(filtered[0].id);
+          const recommended = filtered.find(m => m.recommended) || filtered[0];
+          setSelectedModelId(recommended.id);
         }
       } else {
         const data = await fetchModels(marketId || undefined);
         setModels(data);
         if (data.length > 0) {
-          setSelectedModelId(data[0].id);
+          const recommended = data.find(m => m.recommended) || data[0];
+          setSelectedModelId(recommended.id);
         }
       }
     } catch (error) {

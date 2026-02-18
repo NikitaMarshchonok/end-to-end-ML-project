@@ -901,6 +901,7 @@ def list_models(market_id: str | None = None):
     for mkt_id, market in markets.items():
         if not market:
             continue
+        model_rows = []
         for spec in market.models.values():
             if spec.model is None:
                 continue
@@ -914,7 +915,8 @@ def list_models(market_id: str | None = None):
             else:
                 features = TAIWAN_FEATURES
 
-            out.append(
+            metrics = spec.metrics or {}
+            model_rows.append(
                 {
                     "id": spec.id,
                     "name": spec.name,
@@ -922,8 +924,22 @@ def list_models(market_id: str | None = None):
                     "currency": spec.currency,
                     "features": features,
                     "market_id": mkt_id,
+                    "mae": metrics.get("mae"),
+                    "rmse": metrics.get("rmse"),
+                    "r2": metrics.get("r2"),
                 }
             )
+        # Prefer models with lower MAE; fallback to newer semantic version.
+        model_rows.sort(
+            key=lambda row: (
+                row["mae"] is None,
+                float(row["mae"]) if row["mae"] is not None else float("inf"),
+                -float(row["version"]) if str(row["version"]).replace(".", "", 1).isdigit() else 0.0,
+            )
+        )
+        for idx, row in enumerate(model_rows):
+            row["recommended"] = idx == 0
+            out.append(row)
     return out
 
 

@@ -7,6 +7,10 @@ export interface Model {
   features: Feature[];
   currency: string;
   market_id: string;
+  recommended?: boolean;
+  mae?: number | null;
+  rmse?: number | null;
+  r2?: number | null;
 }
 
 export interface Market {
@@ -300,6 +304,10 @@ export const mockModels: Model[] = [
     version: '3.2',
     currency: 'ILS',
     market_id: 'il-tlv',
+    recommended: true,
+    mae: 420000,
+    rmse: 760000,
+    r2: 0.72,
     features: [
       { name: 'netArea', type: 'number', label: 'Net area', min: 10, max: 1000, step: 1, unit: 'm²', placeholder: '80', required: true },
       { name: 'rooms', type: 'number', label: 'Rooms', min: 1, max: 12, step: 0.5, placeholder: '3', required: true },
@@ -320,6 +328,7 @@ export const mockModels: Model[] = [
     version: '1.0',
     currency: 'TWD',
     market_id: 'tw-tpe',
+    recommended: true,
     features: [
       { name: 'distance', type: 'number', label: 'Distance to MRT', min: 0, max: 20000, step: 50, unit: 'm', placeholder: '400', required: true },
       { name: 'convenience', type: 'number', label: 'Convenience stores', min: 0, max: 20, step: 1, placeholder: '4', required: true },

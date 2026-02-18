@@ -36,9 +36,13 @@ const ModelSelector = ({ models, selectedModelId, onSelect, isLoading }: ModelSe
           {models.map((model) => (
             <SelectItem key={model.id} value={model.id} className="py-3">
               <div className="flex flex-col items-start">
-                <span className="font-medium">{model.name}</span>
+                <span className="font-medium">
+                  {model.name}
+                  {model.recommended ? ' • Recommended' : ''}
+                </span>
                 <span className="text-xs text-muted-foreground">
                   v{model.version} • {model.features.length} features
+                  {typeof model.mae === 'number' ? ` • MAE ${Math.round(model.mae).toLocaleString()}` : ''}
                 </span>
               </div>
             </SelectItem>
